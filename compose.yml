@@ -1,0 +1,57 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: todo_web
+    working_dir: /app
+    volumes:
+      - .:/app:cached
+    environment:
+      - HOST=0.0.0.0
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/appdb?schema=public
+      - ML_URL=http://ml:8000
+      - CI=true
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+      - ml
+    command: >
+      sh -lc "
+        corepack enable &&
+        corepack prepare pnpm@latest --activate &&
+        pnpm install &&
+        pnpm dev --port 3000 --hostname 0.0.0.0
+      "
+
+  db:
+    image: postgres:16
+    container_name: todo_db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=appdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  ml:
+    build:
+      context: ./ml
+      dockerfile: Dockerfile.ml
+    container_name: todo_ml
+    working_dir: /app
+    volumes:
+      - ./ml:/app
+    ports:
+      - "8000:8000"
+    command: >
+      sh -lc "
+        echo 'ML service placeholder running. Add FastAPI later.' &&
+        tail -f /dev/null
+      "
+
+volumes:
+  pgdata:

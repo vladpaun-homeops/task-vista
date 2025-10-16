@@ -1,0 +1,10 @@
+# Node.js 20 on Alpine Linux (small, fast)
+FROM node:20-alpine
+
+# Useful extras for dev
+RUN apk add --no-cache git bash
+
+WORKDIR /app
+EXPOSE 3000
+
+# Actual run command is provided by docker-compose.yml
