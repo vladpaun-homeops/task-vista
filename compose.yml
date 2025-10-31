@@ -14,14 +14,20 @@ services:
       - CI=true
     ports:
       - "3000:3000"
+      - "5555:5555"
     depends_on:
-      - db
-      - ml
+      db:
+        condition: service_healthy
+      ml:
+        condition: service_started
     command: >
       sh -lc "
         corepack enable &&
         corepack prepare pnpm@latest --activate &&
         pnpm install &&
+        pnpm exec prisma generate && 
+        pnpm exec prisma migrate deploy
+        pnpm exec prisma db seed
         pnpm dev --port 3000 --hostname 0.0.0.0
       "
 
@@ -36,6 +42,11 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d appdb"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
 
   ml:
     build:
