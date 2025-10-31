@@ -1,3 +1,5 @@
+import { ThemeProvider } from "@/components/theme-provider"
+import { ModeToggle } from "@/components/mode-toggle";
 import type { Metadata } from "next";
 import "./globals.css";
 
@@ -13,12 +15,24 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={` antialiased`}
-      >
-        {children}
-      </body>
-    </html>
-  );
+    <>
+      <html lang="en" suppressHydrationWarning>
+        <head />
+        <body>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+
+            <div className="fixed bottom-4 right-4 z-50">
+              <ModeToggle />
+            </div>
+          </ThemeProvider>
+        </body>
+      </html>
+    </>
+  )
 }
