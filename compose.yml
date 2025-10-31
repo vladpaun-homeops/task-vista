@@ -25,9 +25,9 @@ services:
         corepack enable &&
         corepack prepare pnpm@latest --activate &&
         pnpm install &&
-        pnpm exec prisma generate && 
-        pnpm exec prisma migrate deploy
-        pnpm exec prisma db seed
+        pnpm exec prisma generate &&
+        pnpm exec prisma migrate deploy &&
+        pnpm exec prisma db seed &&
         pnpm dev --port 3000 --hostname 0.0.0.0
       "
 
@@ -44,9 +44,10 @@ services:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d appdb"]
-      interval: 2s
+      interval: 5m
       timeout: 3s
-      retries: 15
+      retries: 3
+      start_period: 10s
 
   ml:
     build:
@@ -56,13 +57,16 @@ services:
     working_dir: /app
     volumes:
       - ./ml:/app
+    environment:
+      - UVICORN_RELOAD=true
     ports:
       - "8000:8000"
-    command: >
-      sh -lc "
-        echo 'ML service placeholder running. Add FastAPI later.' &&
-        tail -f /dev/null
-      "
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
+      interval: 5m
+      timeout: 3s
+      retries: 1
+      start_period: 5s
 
 volumes:
   pgdata:
