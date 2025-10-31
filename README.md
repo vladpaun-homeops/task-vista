@@ -1,40 +1,105 @@
-# To-Do App (NextJS AI)
-This repository contains a simple To-Do app made with a Next.js framework and a FastAPI connection to a Machine Learning model, made in preparation for the Junction 2025 hackathon.
+# 🧠 To-Do App (Next.js + FastAPI + PostgreSQL)
 
+This repository contains a simple **To-Do web application** built with **Next.js** and **Prisma ORM**, connected to a **PostgreSQL** database and a placeholder **FastAPI ML service**.  
+It is developed as a foundation project for the **Junction 2025 hackathon**.
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+---
 
-## Getting Started
+## 🚀 Development Setup
 
-First, run the development server:
+### Requirements
+- **Docker** and **Docker Compose** must be installed.
 
+### Run the development environment
+
+Start the entire stack:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+docker compose up
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Run in detached mode (background):
+```bash
+docker compose up -d
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Stop and remove all containers:
+```bash
+docker compose down
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 🐳 Docker Compose Overview
 
-To learn more about Next.js, take a look at the following resources:
+Running `docker compose up` orchestrates a **three-service development stack**, defined in `docker-compose.yml`.  
+Each service runs in its own isolated container but shares a common network for internal communication (`db`, `ml`, and `web`).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 1. Database Service (`db`)
+- Uses the official **PostgreSQL 16** image.  
+- Initializes a database named `appdb` with credentials (`postgres` / `postgres`).  
+- Persists data in a **named Docker volume** `pgdata`, ensuring data survives container restarts.  
+- Includes a **health check** (`pg_isready`) that ensures the database is ready before dependent services start.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 2. Machine Learning Service (`ml`)
+- Built from the local `./ml` directory using `Dockerfile.ml`.  
+- Runs a placeholder process (`tail -f /dev/null`), ready to host a **FastAPI ML API**.  
+- Exposes **port 8000** on the host (`http://localhost:8000`).  
+- Mounts the `ml` directory as a bind volume for live code editing.
 
-## Deploy on Vercel
+### 3. Web Service (`web`)
+- Built from the root context using `Dockerfile.web`.  
+- Hosts the **Next.js frontend** and **Prisma ORM** backend logic.  
+- Depends on:
+  - `db` being healthy  
+  - `ml` being started  
+- Executes the following startup sequence:
+  1. Enables **pnpm** via Corepack  
+  2. Installs dependencies  
+  3. Runs `prisma generate`, `migrate deploy`, and `db seed`  
+  4. Starts the Next.js dev server on port **3000**  
+- Exposes:
+  - **Port 3000** → Next.js app (`http://localhost:3000`)  
+  - **Port 5555** → Prisma Studio (`http://localhost:5555`)  
+- Mounts the entire project directory into `/app` for hot reloads.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 4. Volumes
+- `pgdata` → Named Docker volume storing PostgreSQL data at `/var/lib/postgresql/data`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 🧩 Prisma Studio
+
+Prisma Studio is a web-based interface for viewing and modifying your database.
+
+To open Prisma Studio, run:
+```bash
+docker compose exec web pnpm exec prisma studio
+```
+Then visit: [http://localhost:5555](http://localhost:5555)
+
+---
+
+## ☁️ Deployment
+
+The simplest way to deploy this app is through **Vercel**, the official platform by the creators of Next.js.
+
+See the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for details.
+
+---
+
+## 🧰 Stack Summary
+
+| Component | Technology |
+|------------|-------------|
+| Frontend | Next.js 15 (React) |
+| ORM | Prisma |
+| Database | PostgreSQL 16 |
+| ML API | FastAPI (placeholder) |
+| Package Manager | pnpm |
+| Containerization | Docker Compose |
+
+---
+
+## 🧾 License
+
+MIT License © 2025
