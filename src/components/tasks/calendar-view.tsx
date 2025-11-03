@@ -6,10 +6,7 @@ import { format, isSameDay, parseISO } from "date-fns";
 import type { Priority, Status } from "@/generated/prisma/enums";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { TaskPriorityBadge } from "@/components/tasks/task-priority-badge";
-import { TaskStatusBadge } from "@/components/tasks/task-status-badge";
+import { TaskList } from "@/components/tasks/task-list";
 
 type CalendarTask = {
   id: string;
@@ -110,42 +107,7 @@ export function CalendarView({ tasks }: CalendarViewProps) {
             {tasksForSelectedDate.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nothing scheduled for this date.</p>
             ) : (
-              <ScrollArea className="max-h-80">
-                <div className="space-y-4 pr-4">
-                  {tasksForSelectedDate.map((task) => (
-                    <div key={task.id} className="rounded-lg border p-3">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="font-medium">{task.title}</p>
-                          {task.description && (
-                            <p className="text-sm text-muted-foreground line-clamp-2">
-                              {task.description}
-                            </p>
-                          )}
-                        </div>
-                        <TaskPriorityBadge priority={task.priority} />
-                      </div>
-                      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                        <TaskStatusBadge status={task.status} />
-                        {task.tags.map((tag) => (
-                          <Badge
-                            key={tag.id}
-                            variant="secondary"
-                            className="flex items-center gap-1"
-                            style={{ borderColor: tag.color ?? undefined }}
-                          >
-                            <span
-                              className="h-2 w-2 rounded-full border"
-                              style={{ backgroundColor: tag.color ?? undefined }}
-                            />
-                            {tag.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
+              <TaskList tasks={tasksForSelectedDate} highlight="soon" />
             )}
           </CardContent>
         </Card>
@@ -159,40 +121,7 @@ export function CalendarView({ tasks }: CalendarViewProps) {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {noDueDateTasks.map((task) => (
-                  <div key={task.id} className="rounded-lg border p-3">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="font-medium">{task.title}</p>
-                        {task.description && (
-                          <p className="text-sm text-muted-foreground line-clamp-2">
-                            {task.description}
-                          </p>
-                        )}
-                      </div>
-                      <TaskPriorityBadge priority={task.priority} />
-                    </div>
-                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <TaskStatusBadge status={task.status} />
-                      {task.tags.map((tag) => (
-                        <Badge
-                          key={tag.id}
-                          variant="secondary"
-                          className="flex items-center gap-1"
-                          style={{ borderColor: tag.color ?? undefined }}
-                        >
-                          <span
-                            className="h-2 w-2 rounded-full border"
-                            style={{ backgroundColor: tag.color ?? undefined }}
-                          />
-                          {tag.name}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <TaskList tasks={noDueDateTasks} />
             </CardContent>
           </Card>
         )}

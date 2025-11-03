@@ -1,79 +1,115 @@
 'use client';
 
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
-import { Activity, CalendarDays, Home, LineChart, Settings, Tag, ListTodo } from "lucide-react";
+import {
+  Activity,
+  CalendarDays,
+  Home,
+  ListTodo,
+  Settings,
+  Tag as TagIcon,
+  LineChart,
+  Sparkles,
+} from "lucide-react";
 
 import { ModeToggle } from "@/components/mode-toggle";
-import { SidebarNav, type SidebarItem } from "@/components/sidebar-nav";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
 
 type AppShellProps = {
   children: ReactNode;
 };
 
-const navigation: SidebarItem[] = [
-  {
-    label: "Dashboard",
-    href: "/dashboard",
-    icon: Home,
-  },
-  {
-    label: "Tasks",
-    href: "/tasks",
-    icon: ListTodo,
-  },
-  {
-    label: "Tags",
-    href: "/tags",
-    icon: Tag,
-  },
-  {
-    label: "Calendar",
-    href: "/calendar",
-    icon: CalendarDays,
-  },
-  {
-    label: "Activity",
-    href: "/activity",
-    icon: Activity,
-  },
-  {
-    label: "Reports",
-    href: "/reports",
-    icon: LineChart,
-  },
-  {
-    label: "Settings",
-    href: "/settings",
-    icon: Settings,
-  },
-];
+const navigation = [
+  { label: "Dashboard", href: "/dashboard", icon: Home },
+  { label: "Tasks", href: "/tasks", icon: ListTodo },
+  { label: "Tags", href: "/tags", icon: TagIcon },
+  { label: "Calendar", href: "/calendar", icon: CalendarDays },
+  { label: "Activity", href: "/activity", icon: Activity },
+  { label: "Reports", href: "/reports", icon: LineChart },
+  { label: "Settings", href: "/settings", icon: Settings },
+] satisfies Array<{ label: string; href: string; icon: ComponentType<{ className?: string }> }>;
 
 export function AppShell({ children }: AppShellProps) {
-  return (
-    <div className="flex min-h-screen w-full bg-background">
-      <aside className="hidden w-64 border-r bg-muted/20 md:flex md:flex-col">
-        <div className="flex items-center justify-between gap-2 px-2 py-3">
-          <Link href="/dashboard" className="text-xl font-semibold">
-            Todo AI
-          </Link>
-          <ModeToggle />
-        </div>
-        <nav className="mt-6 flex-1 space-y-1 px-2">
-          <SidebarNav items={navigation} />
-        </nav>
-      </aside>
+  const pathname = usePathname();
 
-      <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b px-4 py-3 md:hidden">
-          <Link href="/dashboard" className="text-lg font-semibold">
+  return (
+    <SidebarProvider>
+      <Sidebar collapsible="icon">
+        <SidebarHeader className="px-4 py-5">
+          <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold">
+            <Sparkles className="h-5 w-5 text-primary" />
             Todo AI
           </Link>
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-xs uppercase tracking-wide text-muted-foreground/70">
+              Overview
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {navigation.map((item) => (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)}>
+                      <Link href={item.href} className="flex items-center gap-2">
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+        <SidebarFooter className="mt-auto flex items-center justify-between gap-2 px-4 py-4">
+          <Button asChild variant="outline" size="sm" className="w-full">
+            <Link href="/tasks?status=NOT_STARTED">Quick Start</Link>
+          </Button>
           <ModeToggle />
-        </header>
-        <main className="flex-1 px-4 py-6 md:px-10 md:py-8">{children}</main>
-      </div>
-    </div>
+        </SidebarFooter>
+        <SidebarRail />
+      </Sidebar>
+      <SidebarInset>
+        <div className="flex h-14 items-center gap-3 border-b px-4">
+          <SidebarTrigger />
+          <div className="flex flex-1 items-center justify-between gap-3">
+            <p className="text-sm font-medium text-muted-foreground">
+              {navigation.find((item) => pathname.startsWith(item.href))?.label ?? "Dashboard"}
+            </p>
+            <div className="hidden items-center gap-2 sm:flex">
+              <Button asChild size="sm">
+                <Link href="/tasks">View tasks</Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link href="/tags">Manage tags</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+          <div className="mx-auto w-full max-w-6xl space-y-6">{children}</div>
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

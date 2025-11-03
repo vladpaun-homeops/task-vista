@@ -12,18 +12,9 @@ import {
 import { format } from "date-fns";
 import { CalendarClock, Pencil, Trash2 } from "lucide-react";
 
-import type { Priority, Status } from "@/generated/prisma/enums";
-import { statusOptions } from "@/lib/constants";
+import { Priority, Status } from "@/generated/prisma/enums";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -41,9 +32,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { TaskStatusBadge } from "@/components/tasks/task-status-badge";
-import { TaskPriorityBadge } from "@/components/tasks/task-priority-badge";
+import { TaskTagPill } from "@/components/tasks/task-tag-pill";
+import {
+  TaskCompleteButton,
+  TaskPriorityMenuButton,
+  TaskStatusMenuButton,
+} from "@/components/tasks/task-quick-actions";
 
 export type TaskRow = {
   id: string;
@@ -65,13 +59,22 @@ type TaskTableProps = {
     task: TaskRow,
     status: Status
   ) => Promise<{ success: boolean; error?: string } | void>;
+  onPriorityChange: (
+    task: TaskRow,
+    priority: Priority
+  ) => Promise<{ success: boolean; error?: string } | void>;
 };
 
-export function TaskTable({ tasks, onEdit, onDelete, onStatusChange }: TaskTableProps) {
+export function TaskTable({
+  tasks,
+  onEdit,
+  onDelete,
+  onStatusChange,
+  onPriorityChange,
+}: TaskTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "dueDate", desc: false },
   ]);
-  const [pendingTaskId, setPendingTaskId] = React.useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<TaskRow | null>(null);
   const [deleteError, setDeleteError] = React.useState<string | null>(null);
   const [isDeleting, startDeleting] = React.useTransition();
@@ -79,35 +82,34 @@ export function TaskTable({ tasks, onEdit, onDelete, onStatusChange }: TaskTable
   const columns = React.useMemo<ColumnDef<TaskRow>[]>(
     () => [
       {
+        id: "complete",
+        header: () => <span className="sr-only">Complete</span>,
+        cell: ({ row }) => (
+          <TaskCompleteButton
+            task={row.original}
+            onComplete={(task) => onStatusChange(task, Status.DONE)}
+          />
+        ),
+        enableSorting: false,
+        size: 48,
+      },
+      {
         accessorKey: "title",
         header: () => <span>Task</span>,
         cell: ({ row }) => {
           const task = row.original;
           return (
-            <div className="space-y-1">
-              <p className="font-medium text-sm">{task.title}</p>
+            <div className="space-y-2">
+              <p className="font-medium text-sm text-foreground">{task.title}</p>
               {task.description && (
                 <p className="text-xs text-muted-foreground line-clamp-2">
                   {task.description}
                 </p>
               )}
               {task.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 pt-1">
+                <div className="flex flex-wrap gap-2 pt-1">
                   {task.tags.map((tag) => (
-                    <Badge
-                      key={tag.id}
-                      variant="secondary"
-                      className="flex items-center gap-1"
-                      style={{
-                        borderColor: tag.color ?? undefined,
-                      }}
-                    >
-                      <span
-                        className="h-2 w-2 rounded-full border"
-                        style={{ backgroundColor: tag.color ?? undefined }}
-                      />
-                      {tag.name}
-                    </Badge>
+                    <TaskTagPill key={tag.id} name={tag.name} color={tag.color} />
                   ))}
                 </div>
               )}
@@ -119,18 +121,15 @@ export function TaskTable({ tasks, onEdit, onDelete, onStatusChange }: TaskTable
         accessorKey: "status",
         header: () => <span>Status</span>,
         cell: ({ row }) => (
-          <StatusCell
-            task={row.original}
-            onStatusChange={onStatusChange}
-            pendingTaskId={pendingTaskId}
-            setPendingTaskId={setPendingTaskId}
-          />
+          <TaskStatusMenuButton task={row.original} onStatusChange={onStatusChange} />
         ),
       },
       {
         accessorKey: "priority",
         header: () => <span>Priority</span>,
-        cell: ({ row }) => <TaskPriorityBadge priority={row.original.priority} />,
+        cell: ({ row }) => (
+          <TaskPriorityMenuButton task={row.original} onPriorityChange={onPriorityChange} />
+        ),
       },
       {
         accessorKey: "dueDate",
@@ -240,7 +239,7 @@ export function TaskTable({ tasks, onEdit, onDelete, onStatusChange }: TaskTable
         enableSorting: false,
       },
     ],
-    [deleteError, deleteTarget?.id, isDeleting, onDelete, onEdit, onStatusChange, pendingTaskId]
+    [deleteError, deleteTarget?.id, isDeleting, onDelete, onEdit, onPriorityChange, onStatusChange]
   );
 
   const table = useReactTable({
@@ -314,66 +313,5 @@ function SortIndicator({ direction }: { direction: false | "asc" | "desc" }) {
     <span className="text-xs text-muted-foreground">
       {direction === "asc" ? "↑" : "↓"}
     </span>
-  );
-}
-
-type StatusCellProps = {
-  task: TaskRow;
-  pendingTaskId: string | null;
-  setPendingTaskId: React.Dispatch<React.SetStateAction<string | null>>;
-  onStatusChange: (
-    task: TaskRow,
-    status: Status
-  ) => Promise<{ success: boolean; error?: string } | void>;
-};
-
-function StatusCell({
-  task,
-  pendingTaskId,
-  setPendingTaskId,
-  onStatusChange,
-}: StatusCellProps) {
-  const [isUpdating, startUpdate] = React.useTransition();
-
-  const handleStatusChange = (nextStatus: Status) => {
-    if (nextStatus === task.status) {
-      return;
-    }
-
-    setPendingTaskId(task.id);
-    startUpdate(async () => {
-      try {
-        await onStatusChange(task, nextStatus);
-      } finally {
-        setPendingTaskId(null);
-      }
-    });
-  };
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="flex items-center gap-2 px-2"
-          disabled={isUpdating || pendingTaskId === task.id}
-        >
-          <TaskStatusBadge status={task.status} />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start">
-        <DropdownMenuLabel>Update status</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {statusOptions.map((option) => (
-          <DropdownMenuItem
-            key={option.value}
-            onClick={() => handleStatusChange(option.value)}
-          >
-            {option.label}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }

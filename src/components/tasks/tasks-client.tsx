@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Plus, Tag as TagIcon } from "lucide-react";
 
-import type { Status } from "@/generated/prisma/enums";
+import type { Priority, Status } from "@/generated/prisma/enums";
 import { statusOptions } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +21,16 @@ import { TaskForm } from "@/components/tasks/task-form";
 import { TaskSummary } from "@/components/tasks/task-summary";
 import { TaskTable, type TaskRow } from "@/components/tasks/task-table";
 import type { TagOption } from "@/components/tags/tag-multi-select";
-import { createTaskAction, deleteTaskAction, updateTaskAction, updateTaskStatusAction } from "@/server/actions/tasks";
+import {
+  createTaskAction,
+  deleteTaskAction,
+  updateTaskAction,
+  updateTaskPriorityAction,
+  updateTaskStatusAction,
+} from "@/server/actions/tasks";
+import { createTagAction } from "@/server/actions/tags";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { TagForm } from "@/components/tags/tag-form";
 import type { TaskFormValues } from "@/lib/validations/task";
 
 type TasksClientProps = {
@@ -33,6 +42,7 @@ type TasksClientProps = {
 export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
   const router = useRouter();
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
+  const [isCreateTagOpen, setIsCreateTagOpen] = React.useState(false);
   const [taskToEdit, setTaskToEdit] = React.useState<TaskRow | null>(null);
 
   const handleCreate = React.useCallback(
@@ -87,6 +97,32 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
     [router]
   );
 
+  const handlePriorityChange = React.useCallback(
+    async (task: TaskRow, priority: Priority) => {
+      const result = await updateTaskPriorityAction({ id: task.id, priority });
+      if (!result.success) {
+        return { success: false, error: result.error };
+      }
+
+      router.refresh();
+      return { success: true };
+    },
+    [router]
+  );
+
+  const handleCreateTag = React.useCallback(
+    async (values: { name: string; color: string }) => {
+      const result = await createTagAction(values);
+      if (!result.success) {
+        return { success: false, error: result.error };
+      }
+
+      router.refresh();
+      return { success: true };
+    },
+    [router]
+  );
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -97,10 +133,16 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
           </p>
         </div>
 
-        <Button onClick={() => setIsCreateOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          New task
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={() => setIsCreateOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            New task
+          </Button>
+          <Button variant="outline" onClick={() => setIsCreateTagOpen(true)}>
+            <TagIcon className="mr-2 h-4 w-4" />
+            New tag
+          </Button>
+        </div>
       </div>
 
       <TaskFilters statusOptions={statusOptions} tags={tags} />
@@ -112,6 +154,7 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
         onEdit={(task) => setTaskToEdit(task)}
         onDelete={handleDelete}
         onStatusChange={handleStatusChange}
+        onPriorityChange={handlePriorityChange}
       />
 
       <Sheet open={isCreateOpen} onOpenChange={setIsCreateOpen}>
@@ -172,6 +215,20 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
           <SheetFooter />
         </SheetContent>
       </Sheet>
+
+      <Dialog open={isCreateTagOpen} onOpenChange={setIsCreateTagOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create tag</DialogTitle>
+            <DialogDescription>Organize tasks with new labels.</DialogDescription>
+          </DialogHeader>
+          <TagForm
+            submitLabel="Create tag"
+            onSubmit={handleCreateTag}
+            onSuccess={() => setIsCreateTagOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

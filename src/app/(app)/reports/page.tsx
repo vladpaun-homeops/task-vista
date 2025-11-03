@@ -1,8 +1,12 @@
+import type { ReactNode } from "react";
+
 import { addDays, differenceInCalendarDays, format } from "date-fns";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { TaskSummary } from "@/components/tasks/task-summary";
+import { TaskStatusBadge } from "@/components/tasks/task-status-badge";
+import { TaskPriorityBadge } from "@/components/tasks/task-priority-badge";
+import type { Priority, Status } from "@/generated/prisma/enums";
 import { prisma } from "@/server/db";
 
 export default async function ReportsPage() {
@@ -26,6 +30,11 @@ export default async function ReportsPage() {
   const avgCompletionPerDay = totalCompleted === 0
     ? 0
     : Number((totalCompleted / Math.max(1, differenceInCalendarDays(new Date(), thirtyDaysAgo))).toFixed(2));
+
+  const statusCounts = statusGroups.reduce<Record<Status, number>>((acc, group) => {
+    acc[group.status as Status] = group._count._all;
+    return acc;
+  }, {} as Record<Status, number>);
 
   return (
     <div className="space-y-8">
@@ -71,31 +80,24 @@ export default async function ReportsPage() {
         </Card>
       </div>
 
+      <TaskSummary counts={statusCounts} />
+
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Status breakdown</CardTitle>
             <CardDescription>Distribution of tasks by current status.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Count</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {statusGroups.map((group) => (
-                  <TableRow key={group.status}>
-                    <TableCell className="capitalize">{group.status.toLowerCase().replace(/_/g, " ")}</TableCell>
-                    <TableCell className="text-right">
-                      <Badge variant="outline">{group._count._all}</Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <CardContent className="space-y-3">
+            {statusGroups.map((group) => (
+              <BreakdownRow
+                key={group.status}
+                label={<TaskStatusBadge status={group.status as Status} />}
+                value={group._count._all}
+                total={totalTasks}
+                tone={statusTone[group.status] ?? "var(--primary)"}
+              />
+            ))}
           </CardContent>
         </Card>
 
@@ -104,25 +106,16 @@ export default async function ReportsPage() {
             <CardTitle>Priority breakdown</CardTitle>
             <CardDescription>Balance of urgency levels across tasks.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Priority</TableHead>
-                  <TableHead className="text-right">Count</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {priorityGroups.map((group) => (
-                  <TableRow key={group.priority}>
-                    <TableCell>{group.priority}</TableCell>
-                    <TableCell className="text-right">
-                      <Badge variant="outline">{group._count._all}</Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <CardContent className="space-y-3">
+            {priorityGroups.map((group) => (
+              <BreakdownRow
+                key={group.priority}
+                label={<TaskPriorityBadge priority={group.priority as Priority} />}
+                value={group._count._all}
+                total={totalTasks}
+                tone={priorityTone[group.priority] ?? "var(--primary)"}
+              />
+            ))}
           </CardContent>
         </Card>
       </div>
@@ -132,41 +125,74 @@ export default async function ReportsPage() {
           <CardTitle>Tag distribution</CardTitle>
           <CardDescription>How tags are used across tasks.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tag</TableHead>
-                <TableHead className="text-right">Tasks</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tags.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={2} className="text-center text-sm text-muted-foreground">
-                    No tags yet.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                tags.map((tag) => (
-                  <TableRow key={tag.id}>
-                    <TableCell className="flex items-center gap-2">
-                      <span
-                        className="h-3 w-3 rounded-full border"
-                        style={{ backgroundColor: tag.color ?? undefined }}
-                      />
-                      {tag.name}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Badge variant="secondary">{tag._count.tasks}</Badge>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+        <CardContent className="space-y-3">
+          {tags.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No tags yet.</p>
+          ) : (
+            tags.map((tag) => (
+              <BreakdownRow
+                key={tag.id}
+                label={
+                  <span className="flex items-center gap-2 text-sm text-foreground">
+                    <span
+                      className="h-2.5 w-2.5 rounded-full border"
+                      style={{ backgroundColor: tag.color ?? undefined }}
+                    />
+                    {tag.name}
+                  </span>
+                }
+                value={tag._count.tasks}
+                total={totalTasks}
+                tone={tag.color ?? "var(--primary)"}
+              />
+            ))
+          )}
         </CardContent>
       </Card>
     </div>
   );
 }
+
+function BreakdownRow({
+  label,
+  value,
+  total,
+  tone,
+}: {
+  label: ReactNode;
+  value: number;
+  total: number;
+  tone: string;
+}) {
+  const percentage = total === 0 ? 0 : Math.round((value / total) * 100);
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <span className="flex items-center gap-2">{label}</span>
+        <span className="font-semibold text-foreground">{value}</span>
+      </div>
+      <div className="h-2 rounded-full bg-muted">
+        <div
+          className="h-full rounded-full transition-all"
+          style={{ width: `${percentage}%`, background: tone }}
+        />
+      </div>
+      <p className="text-xs text-muted-foreground">{percentage}% of total</p>
+    </div>
+  );
+}
+
+const statusTone: Record<string, string> = {
+  NOT_STARTED: "linear-gradient(90deg, rgba(148,163,184,0.9), rgba(148,163,184,0.6))",
+  IN_PROGRESS: "linear-gradient(90deg, rgba(56,189,248,0.9), rgba(56,189,248,0.5))",
+  OVERDUE: "linear-gradient(90deg, rgba(248,113,113,0.9), rgba(248,113,113,0.5))",
+  DONE: "linear-gradient(90deg, rgba(34,197,94,0.9), rgba(34,197,94,0.5))",
+};
+
+const priorityTone: Record<string, string> = {
+  URGENT: "linear-gradient(90deg, rgba(248,113,113,0.9), rgba(248,113,113,0.5))",
+  HIGH: "linear-gradient(90deg, rgba(249,115,22,0.9), rgba(249,115,22,0.5))",
+  MEDIUM: "linear-gradient(90deg, rgba(251,191,36,0.9), rgba(251,191,36,0.5))",
+  LOW: "linear-gradient(90deg, rgba(148,163,184,0.9), rgba(148,163,184,0.5))",
+};

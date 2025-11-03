@@ -25,6 +25,11 @@ export const taskStatusSchema = z.object({
   status: statusEnum,
 });
 
+export const taskPrioritySchema = z.object({
+  id: z.string().cuid(),
+  priority: priorityEnum,
+});
+
 export const taskDeleteSchema = z.object({
   id: z.string().cuid(),
 });

@@ -1,28 +1,26 @@
 'use client';
 
 import * as React from "react";
+import { useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { XCircle } from "lucide-react";
+import { Filter, SlidersHorizontal, XCircle } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import { TaskStatusBadge } from "@/components/tasks/task-status-badge";
+import { TaskTagPill } from "@/components/tasks/task-tag-pill";
 import type { TagOption } from "@/components/tags/tag-multi-select";
-import type { Status } from "@/generated/prisma/enums";
-
-type SelectOption<T extends string> = {
-  value: T;
-  label: string;
-};
+import { Status } from "@/generated/prisma/enums";
+import { cn } from "@/lib/utils";
 
 type TaskFiltersProps = {
-  statusOptions: SelectOption<Status>[];
+  statusOptions: { value: Status; label: string }[];
   tags: TagOption[];
 };
 
@@ -32,6 +30,7 @@ export function TaskFilters({ statusOptions, tags }: TaskFiltersProps) {
   const searchParams = useSearchParams();
 
   const [query, setQuery] = React.useState(searchParams.get("q") ?? "");
+  const [tagPickerOpen, setTagPickerOpen] = useState(false);
 
   React.useEffect(() => {
     setQuery(searchParams.get("q") ?? "");
@@ -39,6 +38,9 @@ export function TaskFilters({ statusOptions, tags }: TaskFiltersProps) {
 
   const status = searchParams.get("status");
   const tag = searchParams.get("tag");
+
+  const topTags = useMemo(() => tags.slice(0, 5), [tags]);
+  const moreTags = tags.slice(5);
 
   const updateQuery = React.useCallback(
     (next: Record<string, string | null | undefined>) => {
@@ -66,67 +68,186 @@ export function TaskFilters({ statusOptions, tags }: TaskFiltersProps) {
   );
 
   return (
-    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      <form onSubmit={onSubmit} className="flex w-full flex-col gap-3 md:flex-row md:items-center">
-        <Input
-          placeholder="Search by title or description…"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          className="w-full md:w-72"
-        />
-        <div className="flex gap-3">
-          <Select
-            value={status ?? undefined}
-            onValueChange={(value) =>
-              updateQuery({ status: value === "ALL" ? null : value })
-            }
-          >
-            <SelectTrigger className="w-44">
-              <SelectValue placeholder="All statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All statuses</SelectItem>
-              {statusOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={tag ?? undefined}
-            onValueChange={(value) =>
-              updateQuery({ tag: value === "ALL" ? null : value })
-            }
-          >
-            <SelectTrigger className="w-44">
-              <SelectValue placeholder="All tags" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All tags</SelectItem>
-              {tags.map((tagOption) => (
-                <SelectItem key={tagOption.id} value={tagOption.id}>
-                  {tagOption.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+    <div className="space-y-4">
+      <form onSubmit={onSubmit} className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <Input
+            placeholder="Search by title or description…"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            className="w-full"
+          />
         </div>
+        <Button type="submit" variant="secondary" className="hidden sm:inline-flex">
+          <Filter className="mr-2 h-4 w-4" />
+          Apply
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => {
+            setQuery("");
+            router.replace(pathname, { scroll: false });
+          }}
+        >
+          <XCircle className="mr-2 h-4 w-4" />
+          Reset
+        </Button>
       </form>
 
-      <Button
-        type="button"
-        variant="ghost"
-        className="w-full md:w-auto"
-        onClick={() => {
-          setQuery("");
-          router.replace(pathname, { scroll: false });
-        }}
-      >
-        <XCircle className="mr-2 h-4 w-4" />
-        Reset filters
-      </Button>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">Status</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusFilterPill
+            label="All"
+            active={!status || status === "ALL"}
+            onClick={() => updateQuery({ status: null })}
+          />
+          {statusOptions.map((option) => (
+            <StatusFilterPill
+              key={option.value}
+              label={option.label}
+              active={status === option.value}
+              onClick={() =>
+                updateQuery({
+                  status: status === option.value ? null : option.value,
+                })
+              }
+              status={option.value}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">Tags</span>
+          {moreTags.length > 0 && (
+            <Popover open={tagPickerOpen} onOpenChange={setTagPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button size="sm" variant="ghost" className="gap-1 text-xs px-2">
+                  <SlidersHorizontal className="h-3 w-3" />
+                  More
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Filter tags..." />
+                  <CommandEmpty>No tags found.</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      value="ALL"
+                      onSelect={() => {
+                        updateQuery({ tag: null });
+                        setTagPickerOpen(false);
+                      }}
+                    >
+                      All tags
+                    </CommandItem>
+                    {tags.map((item) => (
+                      <CommandItem
+                        key={item.id}
+                        value={item.id}
+                        onSelect={() => {
+                          updateQuery({ tag: item.id });
+                          setTagPickerOpen(false);
+                        }}
+                      >
+                        {item.name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <TagFilterPill
+            label="All tags"
+            active={!tag || tag === "ALL"}
+            onClick={() => updateQuery({ tag: null })}
+          />
+          {topTags.map((tagOption) => (
+            <TagFilterPill
+              key={tagOption.id}
+              tag={tagOption}
+              active={tag === tagOption.id}
+              onClick={() =>
+                updateQuery({
+                  tag: tag === tagOption.id ? null : tagOption.id,
+                })
+              }
+            />
+          ))}
+        </div>
+      </div>
     </div>
+  );
+}
+
+function StatusFilterPill({
+  label,
+  status,
+  active,
+  onClick,
+}: {
+  label: string;
+  status?: Status;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+    >
+      {status ? (
+        <TaskStatusBadge
+          status={status}
+          className={cn(
+            active
+              ? "ring-2 ring-primary/60 ring-offset-1 ring-offset-background"
+              : "opacity-75 hover:opacity-100"
+          )}
+        />
+      ) : (
+        <span
+          className={cn(
+            "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide",
+            active
+              ? "border-primary/60 bg-primary/20 text-primary"
+              : "border-border text-muted-foreground"
+          )}
+        >
+          {label}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function TagFilterPill({
+  label,
+  tag,
+  active,
+  onClick,
+}: {
+  label?: string;
+  tag?: TagOption;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" onClick={onClick}>
+      {tag ? (
+        <TaskTagPill name={tag.name} color={tag.color} isActive={active} />
+      ) : (
+        <TaskTagPill name={label ?? "All tags"} color={undefined} isActive={active} />
+      )}
+    </button>
   );
 }

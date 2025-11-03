@@ -6,6 +6,7 @@ import { prisma } from "@/server/db";
 import {
   taskCreateSchema,
   taskDeleteSchema,
+  taskPrioritySchema,
   taskStatusSchema,
   taskUpdateSchema,
   type TaskCreateInput,
@@ -119,6 +120,29 @@ export async function updateTaskStatusAction(
   } catch (error) {
     console.error("[updateTaskStatusAction]", error);
     return { success: false, error: "Failed to update status" };
+  }
+}
+
+export async function updateTaskPriorityAction(
+  input: { id: string; priority: TaskUpdateInput["priority"] }
+): Promise<ActionResult> {
+  const parsed = taskPrioritySchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.message };
+  }
+
+  try {
+    await prisma.task.update({
+      where: { id: parsed.data.id },
+      data: { priority: parsed.data.priority },
+    });
+
+    invalidateTaskViews();
+
+    return { success: true };
+  } catch (error) {
+    console.error("[updateTaskPriorityAction]", error);
+    return { success: false, error: "Failed to update priority" };
   }
 }
 

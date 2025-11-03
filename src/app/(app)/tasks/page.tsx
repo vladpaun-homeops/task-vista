@@ -47,8 +47,11 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
       ],
     }),
     prisma.tag.findMany({
-      orderBy: { name: "asc" },
-    }),
+      include: { _count: { select: { tasks: true } } },
+      orderBy: [{ tasks: { _count: "desc" } }, { name: "asc" }],
+    }) as Promise<
+      Array<{ id: string; name: string; color: string; _count: { tasks: number } }>
+    >,
     prisma.task.groupBy({
       by: ["status"],
       _count: { _all: true },
@@ -75,6 +78,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
     id: tag.id,
     name: tag.name,
     color: tag.color,
+    usageCount: tag._count.tasks,
   }));
 
   const statusCounts = statusGroups.reduce<Partial<Record<Status, number>>>((acc, group) => {
