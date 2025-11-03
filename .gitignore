@@ -45,4 +45,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# python
+ml/__pycache__/
+
 /src/generated/prisma
