@@ -98,6 +98,12 @@ See the [Next.js deployment documentation](https://nextjs.org/docs/app/building-
 | Package Manager | pnpm |
 | Containerization | Docker Compose |
 
+
+## 📌 Outstanding Work
+
+- Tasks page filter handler still reads `searchParams` synchronously; Next 16 treats it as a promise, so accessing `searchParams.tag` directly throws (`searchParams` must be awaited/`React.use()`-ed). Update the route handler to unwrap before use.
+- Re-run end-to-end testing on the filters once the above is addressed.
+
 ---
 
 ## 🧾 License
