@@ -1,28 +1,40 @@
 import { NextResponse } from "next/server";
 
-export async function POST(req: Request) {
-  const ct = req.headers.get("content-type") || "";
-  let body: any;
+type JsonLike = Record<string, unknown>;
 
-  if (ct.includes("application/json")) {
-    body = await req.json();
+function ensureJsonObject(payload: unknown): JsonLike {
+  if (payload && typeof payload === "object") {
+    return payload as JsonLike;
+  }
+
+  return { value: payload ?? null };
+}
+
+export async function POST(req: Request) {
+  const contentType = req.headers.get("content-type") ?? "";
+
+  let body: JsonLike = {};
+
+  if (contentType.includes("application/json")) {
+    const parsed = await req.json();
+    body = ensureJsonObject(parsed);
   } else {
-    // handles application/x-www-form-urlencoded and multipart/form-data
     const form = await req.formData();
     body = Object.fromEntries(form.entries());
   }
 
   const url = process.env.ML_URL ?? "http://ml:8000";
-  const r = await fetch(`${url}/categorize`, {
+  const upstreamResponse = await fetch(`${url}/categorize`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
 
-  if (!r.ok) {
+  if (!upstreamResponse.ok) {
     return NextResponse.json({ error: "ML service error" }, { status: 502 });
   }
 
-  const data = await r.json();
+  const data = (await upstreamResponse.json()) as unknown;
+
   return NextResponse.json(data);
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-export async function GET(req: Request) {
+export async function GET() {
   const url = process.env.ML_URL ?? "http://ml:8000";
   const r = await fetch(`${url}/health`, { method: "GET", });
   if (!r.ok) {
