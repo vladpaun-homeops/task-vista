@@ -3,6 +3,16 @@ import { prisma } from "@/server/db"
 import { Priority, Status } from "@/generated/prisma/enums"
 
 async function main() {
+    const [tagCount, taskCount] = await Promise.all([
+        prisma.tag.count(),
+        prisma.task.count(),
+    ]);
+
+    if (tagCount > 0 || taskCount > 0) {
+        console.log("ℹ️ Database already contains data; skipping seed");
+        return;
+    }
+
     const tags = [
         { name: "work",  color: "#0EA5E9" }, // sky-500
         { name: "uni",   color: "#A78BFA" }, // violet-400
