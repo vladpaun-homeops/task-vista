@@ -195,7 +195,7 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
       />
 
       <Sheet open={isCreateOpen} onOpenChange={handleCreateOpenChange}>
-        <SheetContent className="w-full gap-0 p-0 sm:max-w-md">
+        <SheetContent className="w-full gap-0 p-0 sm:max-w-lg">
           <SheetHeader className="px-6 pt-6">
             <SheetTitle>Create task</SheetTitle>
             <SheetDescription>
@@ -203,7 +203,7 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
             </SheetDescription>
           </SheetHeader>
           <ScrollArea className="h-full">
-            <div className="px-6 pb-8">
+            <div className="px-6 pb-8 pt-2">
               <TaskForm
                 tags={tags}
                 submitLabel="Create task"
@@ -218,7 +218,7 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
       </Sheet>
 
       <Sheet open={!!taskToEdit} onOpenChange={(open) => !open && setTaskToEdit(null)}>
-        <SheetContent className="w-full gap-0 p-0 sm:max-w-md">
+        <SheetContent className="w-full gap-0 p-0 sm:max-w-lg">
           <SheetHeader className="px-6 pt-6">
             <SheetTitle>Edit task</SheetTitle>
             <SheetDescription>
@@ -226,7 +226,7 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
             </SheetDescription>
           </SheetHeader>
           <ScrollArea className="h-full">
-            <div className="px-6 pb-8">
+            <div className="px-6 pb-8 pt-2">
               {taskToEdit && (
                 <TaskForm
                   tags={tags}
