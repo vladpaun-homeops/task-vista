@@ -1,9 +1,8 @@
 "use client";
 
-import { format } from "date-fns";
 import { CalendarDays, Pencil, Trash2 } from "lucide-react";
 
-import { cn } from "@/lib/utils";
+import { cn, formatDateLabel } from "@/lib/utils";
 import type { Priority, Status } from "@/generated/prisma/enums";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -142,11 +141,20 @@ function DueDateChip({ dueDate }: { dueDate: string | null }) {
     );
   }
 
-  const date = new Date(dueDate);
+  const formattedDate = formatDateLabel(dueDate);
+  if (!formattedDate) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-slate-600/40 bg-slate-800/60 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-slate-200">
+        <CalendarDays className="h-3 w-3 opacity-70" />
+        Invalid date
+      </span>
+    );
+  }
+
   return (
     <span className="inline-flex items-center gap-1 rounded-full border border-violet-500/40 bg-violet-500/10 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-violet-200">
       <CalendarDays className="h-3 w-3 opacity-80" />
-      Due {format(date, "MMM d")}
+      Due {formattedDate}
     </span>
   );
 }
