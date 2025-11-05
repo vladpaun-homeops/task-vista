@@ -1,20 +1,13 @@
 'use client';
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Plus, Tag as TagIcon } from "lucide-react";
 
 import type { Priority, Status } from "@/generated/prisma/enums";
 import { statusOptions } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TaskFilters } from "@/components/tasks/task-filters";
 import { TaskForm } from "@/components/tasks/task-form";
@@ -41,9 +34,53 @@ type TasksClientProps = {
 
 export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
   const [isCreateTagOpen, setIsCreateTagOpen] = React.useState(false);
   const [taskToEdit, setTaskToEdit] = React.useState<TaskRow | null>(null);
+
+  const createParam = searchParams.get("create");
+
+  const updateCreateQuery = React.useCallback(
+    (shouldOpen: boolean) => {
+      if (!pathname) {
+        return;
+      }
+
+      const nextParams = new URLSearchParams(searchParams.toString());
+      if (shouldOpen) {
+        nextParams.set("create", "1");
+      } else {
+        nextParams.delete("create");
+      }
+
+      const query = nextParams.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams]
+  );
+
+  const handleOpenCreate = React.useCallback(() => {
+    setIsCreateOpen(true);
+    updateCreateQuery(true);
+  }, [updateCreateQuery]);
+
+  React.useEffect(() => {
+    if (createParam && !isCreateOpen) {
+      setIsCreateOpen(true);
+    }
+  }, [createParam, isCreateOpen]);
+
+  const handleCreateOpenChange = React.useCallback(
+    (open: boolean) => {
+      setIsCreateOpen(open);
+      if (!open && createParam) {
+        updateCreateQuery(false);
+      }
+    },
+    [createParam, updateCreateQuery]
+  );
 
   const handleCreate = React.useCallback(
     async (values: TaskFormValues) => {
@@ -134,7 +171,7 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={() => setIsCreateOpen(true)}>
+          <Button onClick={handleOpenCreate}>
             <Plus className="mr-2 h-4 w-4" />
             New task
           </Button>
@@ -157,62 +194,64 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
         onPriorityChange={handlePriorityChange}
       />
 
-      <Sheet open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <SheetContent>
-          <SheetHeader>
+      <Sheet open={isCreateOpen} onOpenChange={handleCreateOpenChange}>
+        <SheetContent className="w-full gap-0 p-0 sm:max-w-lg">
+          <SheetHeader className="px-6 pt-6">
             <SheetTitle>Create task</SheetTitle>
             <SheetDescription>
               Set the basics now—you can always refine it later.
             </SheetDescription>
           </SheetHeader>
-          <ScrollArea className="h-full px-1">
-            <TaskForm
-              tags={tags}
-              submitLabel="Create task"
-              onSubmit={handleCreate}
-              onSuccess={() => {
-                setIsCreateOpen(false);
-              }}
-            />
+          <ScrollArea className="h-full">
+            <div className="px-6 pb-8 pt-2">
+              <TaskForm
+                tags={tags}
+                submitLabel="Create task"
+                onSubmit={handleCreate}
+                onSuccess={() => {
+                  handleCreateOpenChange(false);
+                }}
+              />
+            </div>
           </ScrollArea>
-          <SheetFooter />
         </SheetContent>
       </Sheet>
 
       <Sheet open={!!taskToEdit} onOpenChange={(open) => !open && setTaskToEdit(null)}>
-        <SheetContent>
-          <SheetHeader>
+        <SheetContent className="w-full gap-0 p-0 sm:max-w-lg">
+          <SheetHeader className="px-6 pt-6">
             <SheetTitle>Edit task</SheetTitle>
             <SheetDescription>
               Update details, due date, status, or tags.
             </SheetDescription>
           </SheetHeader>
-          <ScrollArea className="h-full px-1">
-            {taskToEdit && (
-              <TaskForm
-                tags={tags}
-                submitLabel="Save changes"
-                defaultValues={{
-                  title: taskToEdit.title,
-                  description: taskToEdit.description ?? "",
-                  dueDate: taskToEdit.dueDate ? new Date(taskToEdit.dueDate) : null,
-                  priority: taskToEdit.priority,
-                  status: taskToEdit.status,
-                  tagIds: taskToEdit.tags.map((tag) => tag.id),
-                }}
-                onSubmit={(values) =>
-                  handleUpdate({
-                    ...values,
-                    id: taskToEdit.id,
-                  })
-                }
-                onSuccess={() => {
-                  setTaskToEdit(null);
-                }}
-              />
-            )}
+          <ScrollArea className="h-full">
+            <div className="px-6 pb-8 pt-2">
+              {taskToEdit && (
+                <TaskForm
+                  tags={tags}
+                  submitLabel="Save changes"
+                  defaultValues={{
+                    title: taskToEdit.title,
+                    description: taskToEdit.description ?? "",
+                    dueDate: taskToEdit.dueDate ? new Date(taskToEdit.dueDate) : null,
+                    priority: taskToEdit.priority,
+                    status: taskToEdit.status,
+                    tagIds: taskToEdit.tags.map((tag) => tag.id),
+                  }}
+                  onSubmit={(values) =>
+                    handleUpdate({
+                      ...values,
+                      id: taskToEdit.id,
+                    })
+                  }
+                  onSuccess={() => {
+                    setTaskToEdit(null);
+                  }}
+                />
+              )}
+            </div>
           </ScrollArea>
-          <SheetFooter />
         </SheetContent>
       </Sheet>
 

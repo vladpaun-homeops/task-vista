@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     body = Object.fromEntries(form.entries());
   }
 
-  const url = process.env.ML_URL ?? "http://ml:8000";
+  const url = process.env.ML_URL ?? "http://localhost:8000";
   const upstreamResponse = await fetch(`${url}/categorize`, {
     method: "POST",
     headers: { "content-type": "application/json" },

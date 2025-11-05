@@ -6,13 +6,16 @@ import { prisma } from "@/server/db";
 import { taskFiltersSchema } from "@/lib/validations/task";
 
 type TasksPageProps = {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export default async function TasksPage({ searchParams }: TasksPageProps) {
-  const rawStatus = typeof searchParams?.status === "string" ? searchParams.status : null;
-  const rawTag = typeof searchParams?.tag === "string" ? searchParams.tag : null;
-  const rawQuery = typeof searchParams?.q === "string" ? searchParams.q : null;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+
+  const rawStatus =
+    typeof resolvedSearchParams?.status === "string" ? resolvedSearchParams.status : null;
+  const rawTag = typeof resolvedSearchParams?.tag === "string" ? resolvedSearchParams.tag : null;
+  const rawQuery = typeof resolvedSearchParams?.q === "string" ? resolvedSearchParams.q : null;
 
   const parsedFilters = taskFiltersSchema.safeParse({
     status: rawStatus && rawStatus !== "ALL" ? rawStatus : undefined,
