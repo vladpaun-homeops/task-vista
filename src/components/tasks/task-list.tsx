@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { CalendarDays, Pencil, Trash2 } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 
 import { cn, formatDateLabel } from "@/lib/utils";
 import { sortTasks, nextSortConfig, type SortConfig, type TaskSortKey } from "@/lib/task-sorting";
@@ -119,71 +120,95 @@ export function TaskList({
       {!hasTasks ? (
         <p className="text-sm text-muted-foreground">{emptyMessage}</p>
       ) : (
-        sortedTasks.map((task) => (
-        <Card key={task.id} className={cn("px-4 py-4 transition", highlightClasses[highlight])}>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex-1 space-y-2">
-              <div>
-                <p className="text-base font-semibold leading-tight text-foreground">{task.title}</p>
-                {task.description && (
-                  <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {onStatusChange ? (
-                  <TaskStatusMenuButton task={task} onStatusChange={onStatusChange} />
-                ) : (
-                  <TaskStatusBadge status={task.status} />
-                )}
-                <DueDateChip dueDate={task.dueDate} />
-              </div>
-              {task.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {task.tags.map((tag) => (
-                    <TaskTagPill key={tag.id} name={tag.name} color={tag.color} />
-                  ))}
+        sortedTasks.map((task) => {
+          const createdAtDate = task.createdAt ? new Date(task.createdAt) : null;
+          const updatedAtDate = task.updatedAt ? new Date(task.updatedAt) : null;
+          const createdLabel =
+            createdAtDate && !Number.isNaN(createdAtDate.getTime())
+              ? formatDistanceToNow(createdAtDate, { addSuffix: true })
+              : null;
+          const updatedLabel =
+            updatedAtDate && !Number.isNaN(updatedAtDate.getTime())
+              ? formatDistanceToNow(updatedAtDate, { addSuffix: true })
+              : null;
+
+          return (
+            <Card
+              key={task.id}
+              className={cn("px-4 py-4 transition", highlightClasses[highlight])}
+            >
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex-1 space-y-2">
+                  <div>
+                    <p className="text-base font-semibold leading-tight text-foreground">
+                      {task.title}
+                    </p>
+                    {task.description && (
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {task.description}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {onStatusChange ? (
+                      <TaskStatusMenuButton task={task} onStatusChange={onStatusChange} />
+                    ) : (
+                      <TaskStatusBadge status={task.status} />
+                    )}
+                    <DueDateChip dueDate={task.dueDate} />
+                  </div>
+                  {task.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {task.tags.map((tag) => (
+                        <TaskTagPill key={tag.id} name={tag.name} color={tag.color} />
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                    {createdLabel && <span>Created {createdLabel}</span>}
+                    {updatedLabel && <span>Updated {updatedLabel}</span>}
+                  </div>
                 </div>
-              )}
-            </div>
-            <div className="flex flex-col items-end gap-2">
-              {onPriorityChange ? (
-                <TaskPriorityMenuButton task={task} onPriorityChange={onPriorityChange} />
-              ) : (
-                <TaskPriorityBadge priority={task.priority} />
-              )}
-              {(onComplete || onEdit || onDelete) && (
-                <div className="flex items-center gap-1">
-                  {onComplete && (
-                    <TaskCompleteButton task={task} onComplete={onComplete} />
+                <div className="flex flex-col items-end gap-2">
+                  {onPriorityChange ? (
+                    <TaskPriorityMenuButton task={task} onPriorityChange={onPriorityChange} />
+                  ) : (
+                    <TaskPriorityBadge priority={task.priority} />
                   )}
-                  {onEdit && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => onEdit(task)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                      <span className="sr-only">Edit task</span>
-                    </Button>
-                  )}
-                  {onDelete && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive"
-                      onClick={() => onDelete(task)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">Delete task</span>
-                    </Button>
+                  {(onComplete || onEdit || onDelete) && (
+                    <div className="flex items-center gap-1">
+                      {onComplete && (
+                        <TaskCompleteButton task={task} onComplete={onComplete} />
+                      )}
+                      {onEdit && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => onEdit(task)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                          <span className="sr-only">Edit task</span>
+                        </Button>
+                      )}
+                      {onDelete && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive"
+                          onClick={() => onDelete(task)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">Delete task</span>
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
-          </div>
-        </Card>
-        ))
+              </div>
+            </Card>
+          );
+        })
       )}
     </div>
   );

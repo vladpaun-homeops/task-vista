@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import type { LucideIcon } from "lucide-react";
 import { Filter, SlidersHorizontal, XCircle } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ import { TaskTagPill } from "@/components/tasks/task-tag-pill";
 import type { TagOption } from "@/components/tags/tag-multi-select";
 import { Status } from "@/generated/prisma/enums";
 import { cn } from "@/lib/utils";
+import { taskQuickFilters, type TaskQuickFilterValue } from "@/lib/task-quick-filters";
 
 type TaskFiltersProps = {
   statusOptions: { value: Status; label: string }[];
@@ -38,6 +40,7 @@ export function TaskFilters({ statusOptions, tags }: TaskFiltersProps) {
 
   const status = searchParams.get("status");
   const tag = searchParams.get("tag");
+  const view = searchParams.get("view");
 
   const topTags = useMemo(() => tags.slice(0, 5), [tags]);
   const moreTags = tags.slice(5);
@@ -67,6 +70,17 @@ export function TaskFilters({ statusOptions, tags }: TaskFiltersProps) {
     [query, updateQuery]
   );
 
+  const handleQuickFilterToggle = React.useCallback(
+    (value: TaskQuickFilterValue) => {
+      const nextActive = view === value;
+      updateQuery({
+        view: nextActive ? null : value,
+        ...(nextActive ? {} : { status: null }),
+      });
+    },
+    [updateQuery, view]
+  );
+
   return (
     <div className="space-y-4">
       <form onSubmit={onSubmit} className="flex items-center gap-3">
@@ -94,6 +108,32 @@ export function TaskFilters({ statusOptions, tags }: TaskFiltersProps) {
           Reset
         </Button>
       </form>
+
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">
+            Quick filters
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <QuickFilterChip
+            label="All"
+            description="Show every task."
+            active={!view}
+            onClick={() => updateQuery({ view: null })}
+          />
+          {taskQuickFilters.map((filter) => (
+            <QuickFilterChip
+              key={filter.value}
+              label={filter.label}
+              description={filter.description}
+              icon={filter.icon}
+              active={view === filter.value}
+              onClick={() => handleQuickFilterToggle(filter.value)}
+            />
+          ))}
+        </div>
+      </div>
 
       <div className="space-y-2">
         <div className="flex items-center gap-2">
@@ -185,6 +225,38 @@ export function TaskFilters({ statusOptions, tags }: TaskFiltersProps) {
         </div>
       </div>
     </div>
+  );
+}
+
+function QuickFilterChip({
+  label,
+  description,
+  icon: Icon,
+  active,
+  onClick,
+}: {
+  label: string;
+  description: string;
+  icon?: LucideIcon;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2",
+        active
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-card text-muted-foreground hover:border-primary/60 hover:text-foreground"
+      )}
+      aria-pressed={active}
+      title={description}
+    >
+      {Icon && <Icon className="h-3.5 w-3.5" />}
+      {label}
+    </button>
   );
 }
 

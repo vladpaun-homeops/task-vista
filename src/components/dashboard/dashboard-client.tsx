@@ -1,13 +1,16 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { LucideIcon } from "lucide-react";
 import { Plus, Tag as TagIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Priority, Status } from "@/generated/prisma/enums";
 import type { TaskFormValues } from "@/lib/validations/task";
 import type { TagOption } from "@/components/tags/tag-multi-select";
+import { taskQuickFilters } from "@/lib/task-quick-filters";
 import {
   createTaskAction,
   deleteTaskAction,
@@ -188,6 +191,26 @@ export function DashboardClient({
         </div>
       </header>
 
+      <section className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">
+            Quick filters
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <QuickFilterLink label="All tasks" href="/tasks" description="Show every task." />
+          {taskQuickFilters.map((filter) => (
+            <QuickFilterLink
+              key={filter.value}
+              label={filter.label}
+              description={filter.description}
+              icon={filter.icon}
+              href={`/tasks?view=${filter.value}`}
+            />
+          ))}
+        </div>
+      </section>
+
       <TaskSummary counts={statusCounts} />
 
       {overdue.length > 0 && (
@@ -366,5 +389,28 @@ function SectionHeader({ title, description, tone = "default" }: SectionHeaderPr
       <h2 className="text-xl font-semibold text-foreground">{title}</h2>
       <p className={cn("text-sm", toneStyles[tone])}>{description}</p>
     </div>
+  );
+}
+
+function QuickFilterLink({
+  label,
+  href,
+  description,
+  icon: Icon,
+}: {
+  label: string;
+  href: string;
+  description?: string;
+  icon?: LucideIcon;
+}) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition hover:border-primary/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2"
+      title={description}
+    >
+      {Icon && <Icon className="h-3.5 w-3.5" />}
+      {label}
+    </Link>
   );
 }
