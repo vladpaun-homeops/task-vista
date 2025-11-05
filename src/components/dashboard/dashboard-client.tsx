@@ -55,6 +55,8 @@ type DashboardTask = {
   dueDate: string | null;
   priority: Priority;
   status: Status;
+  createdAt: string;
+  updatedAt: string;
   tags: { id: string; name: string; color: string | null }[];
 };
 

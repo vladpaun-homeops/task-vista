@@ -1,8 +1,11 @@
 "use client";
 
+import * as React from "react";
+
 import { CalendarDays, Pencil, Trash2 } from "lucide-react";
 
 import { cn, formatDateLabel } from "@/lib/utils";
+import { sortTasks, nextSortConfig, type SortConfig, type TaskSortKey } from "@/lib/task-sorting";
 import type { Priority, Status } from "@/generated/prisma/enums";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,12 +24,15 @@ type TaskListItem = TaskActionTarget & {
   description: string | null;
   dueDate: string | null;
   tags: { id: string; name: string; color: string | null }[];
+  createdAt: string;
+  updatedAt: string;
 };
 
 type TaskListProps = {
   tasks: TaskListItem[];
   emptyMessage?: string;
   highlight?: "default" | "overdue" | "soon";
+  showSortControls?: boolean;
   onComplete?: (task: TaskListItem) => Promise<{ success: boolean; error?: string } | void>;
   onEdit?: (task: TaskListItem) => void;
   onDelete?: (task: TaskListItem) => void;
@@ -50,19 +56,70 @@ export function TaskList({
   tasks,
   emptyMessage = "Nothing to show.",
   highlight = "default",
+  showSortControls = true,
   onComplete,
   onEdit,
   onDelete,
   onStatusChange,
   onPriorityChange,
 }: TaskListProps) {
-  if (tasks.length === 0) {
-    return <p className="text-sm text-muted-foreground">{emptyMessage}</p>;
-  }
+  const hasTasks = tasks.length > 0;
+
+  const [sortConfig, setSortConfig] = React.useState<SortConfig>({
+    key: "dueDate",
+    direction: "asc",
+  });
+
+  const sortedTasks = React.useMemo(
+    () => sortTasks(tasks, sortConfig),
+    [tasks, sortConfig]
+  );
+
+  const handleSortToggle = React.useCallback((key: TaskSortKey) => {
+    setSortConfig((current) => nextSortConfig(current, key));
+  }, []);
+
+  const getDirectionFor = React.useCallback(
+    (key: TaskSortKey) =>
+      sortConfig && sortConfig.key === key ? sortConfig.direction : null,
+    [sortConfig]
+  );
+
+  const sortOptions: Array<{ key: TaskSortKey; label: string }> = React.useMemo(
+    () => [
+      { key: "dueDate", label: "Due" },
+      { key: "priority", label: "Priority" },
+      { key: "status", label: "Status" },
+      { key: "createdAt", label: "Created" },
+    ],
+    []
+  );
 
   return (
     <div className="space-y-3">
-      {tasks.map((task) => (
+      {showSortControls && hasTasks && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Sort
+          </span>
+          {sortOptions.map((option) => {
+            const direction = getDirectionFor(option.key);
+            return (
+              <SortToggleButton
+                key={option.key}
+                label={option.label}
+                direction={direction}
+                onClick={() => handleSortToggle(option.key)}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      {!hasTasks ? (
+        <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+      ) : (
+        sortedTasks.map((task) => (
         <Card key={task.id} className={cn("px-4 py-4 transition", highlightClasses[highlight])}>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex-1 space-y-2">
@@ -126,8 +183,46 @@ export function TaskList({
             </div>
           </div>
         </Card>
-      ))}
+        ))
+      )}
     </div>
+  );
+}
+
+function SortToggleButton({
+  label,
+  direction,
+  onClick,
+}: {
+  label: string;
+  direction: "asc" | "desc" | null;
+  onClick: () => void;
+}) {
+  const isActive = direction !== null;
+
+  return (
+    <Button
+      variant={isActive ? "secondary" : "ghost"}
+      size="sm"
+      className="gap-1"
+      type="button"
+      onClick={onClick}
+    >
+      {label}
+      <SortIndicator direction={direction} />
+    </Button>
+  );
+}
+
+function SortIndicator({ direction }: { direction: "asc" | "desc" | null }) {
+  if (!direction) {
+    return null;
+  }
+
+  return (
+    <span className="text-xs text-muted-foreground">
+      {direction === "asc" ? "↑" : "↓"}
+    </span>
   );
 }
 

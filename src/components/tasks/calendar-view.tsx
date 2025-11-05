@@ -15,6 +15,8 @@ type CalendarTask = {
   dueDate: string | null;
   priority: Priority;
   status: Status;
+  createdAt: string;
+  updatedAt: string;
   tags: { id: string; name: string; color: string | null }[];
 };
 
@@ -107,7 +109,7 @@ export function CalendarView({ tasks }: CalendarViewProps) {
             {tasksForSelectedDate.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nothing scheduled for this date.</p>
             ) : (
-              <TaskList tasks={tasksForSelectedDate} highlight="soon" />
+              <TaskList tasks={tasksForSelectedDate} highlight="soon" showSortControls={false} />
             )}
           </CardContent>
         </Card>
@@ -121,7 +123,7 @@ export function CalendarView({ tasks }: CalendarViewProps) {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <TaskList tasks={noDueDateTasks} />
+              <TaskList tasks={noDueDateTasks} showSortControls={false} />
             </CardContent>
           </Card>
         )}

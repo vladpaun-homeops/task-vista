@@ -14,6 +14,8 @@ export default async function CalendarPage() {
     dueDate: task.dueDate ? task.dueDate.toISOString() : null,
     priority: task.priority,
     status: task.status,
+    createdAt: task.createdAt.toISOString(),
+    updatedAt: task.updatedAt.toISOString(),
     tags: task.tags.map((tag) => ({
       id: tag.id,
       name: tag.name,
