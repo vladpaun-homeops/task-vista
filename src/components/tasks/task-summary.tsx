@@ -1,5 +1,6 @@
-import { statusOptions } from "@/lib/constants";
 import type { Status } from "@/generated/prisma/enums";
+import { statusOptions } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 
 type TaskSummaryProps = {
   counts: Partial<Record<Status, number>>;
@@ -29,30 +30,37 @@ function StatusSummaryChip({
   value: number;
   status: Status;
 }) {
-  const tones: Record<Status, { border: string; dot: string; background: string; text: string }> = {
+  const tones: Record<
+    Status,
+    { container: string; dot: string; label: string; value: string }
+  > = {
     NOT_STARTED: {
-      border: "border-slate-600/50",
-      dot: "bg-slate-300",
-      background: "bg-slate-900/60",
-      text: "text-slate-100",
+      container:
+        "border-slate-300 bg-slate-100 dark:border-slate-700/60 dark:bg-slate-900/60",
+      dot: "bg-slate-600 dark:bg-slate-300",
+      label: "text-slate-700 dark:text-slate-200",
+      value: "text-slate-900 dark:text-slate-100",
     },
     IN_PROGRESS: {
-      border: "border-sky-500/40",
-      dot: "bg-sky-400",
-      background: "bg-sky-500/10",
-      text: "text-sky-100",
+      container:
+        "border-sky-300 bg-sky-100 dark:border-sky-500/60 dark:bg-sky-500/15",
+      dot: "bg-sky-600 dark:bg-sky-300",
+      label: "text-sky-800 dark:text-sky-200",
+      value: "text-sky-900 dark:text-sky-100",
     },
     OVERDUE: {
-      border: "border-red-500/50",
-      dot: "bg-red-500",
-      background: "bg-red-500/10",
-      text: "text-red-100",
+      container:
+        "border-red-300 bg-red-100 dark:border-red-500/60 dark:bg-red-500/15",
+      dot: "bg-red-700 dark:bg-red-400",
+      label: "text-red-800 dark:text-red-200",
+      value: "text-red-900 dark:text-red-100",
     },
     DONE: {
-      border: "border-emerald-500/50",
-      dot: "bg-emerald-500",
-      background: "bg-emerald-500/10",
-      text: "text-emerald-100",
+      container:
+        "border-emerald-300 bg-emerald-100 dark:border-emerald-500/60 dark:bg-emerald-500/15",
+      dot: "bg-emerald-600 dark:bg-emerald-300",
+      label: "text-emerald-800 dark:text-emerald-200",
+      value: "text-emerald-900 dark:text-emerald-100",
     },
   };
 
@@ -60,18 +68,23 @@ function StatusSummaryChip({
 
   return (
     <div
-      className={
-        "flex min-w-[180px] items-center justify-between rounded-md border px-3 py-2 " +
-        `${tone.border} ${tone.background}`
-      }
+      className={cn(
+        "flex min-w-[180px] items-center justify-between rounded-md border px-3 py-2 transition-colors",
+        tone.container
+      )}
     >
       <div className="flex items-center gap-2">
-        <span className={`h-2 w-2 rounded-full ${tone.dot}`} />
-        <span className="text-xs font-semibold uppercase tracking-wide text-slate-200">
+        <span className={cn("h-2 w-2 rounded-full", tone.dot)} />
+        <span
+          className={cn(
+            "text-xs font-semibold uppercase tracking-wide",
+            tone.label
+          )}
+        >
           {label}
         </span>
       </div>
-      <span className={`text-lg font-semibold ${tone.text}`}>{value}</span>
+      <span className={cn("text-lg font-semibold", tone.value)}>{value}</span>
     </div>
   );
 }

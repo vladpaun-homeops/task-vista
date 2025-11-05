@@ -15,23 +15,27 @@ const statusStyles: Record<
   { container: string; dot: string; icon: ReactNode }
 > = {
   [Status.NOT_STARTED]: {
-    container: "border-slate-500/40 bg-slate-900/60 text-slate-200",
-    dot: "bg-slate-300",
+    container:
+      "border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-700/60 dark:bg-slate-900/60 dark:text-slate-200",
+    dot: "bg-slate-500 dark:bg-slate-300",
     icon: <CircleDashed className="h-3 w-3" />,
   },
   [Status.IN_PROGRESS]: {
-    container: "border-sky-500/40 bg-sky-500/10 text-sky-300",
-    dot: "bg-sky-400",
+    container:
+      "border-sky-300 bg-sky-100 text-sky-900 dark:border-sky-500/60 dark:bg-sky-500/15 dark:text-sky-200",
+    dot: "bg-sky-600 dark:bg-sky-300",
     icon: <Clock3 className="h-3 w-3" />,
   },
   [Status.OVERDUE]: {
-    container: "border-red-500/50 bg-red-500/10 text-red-300",
-    dot: "bg-red-500",
+    container:
+      "border-red-300 bg-red-100 text-red-900 dark:border-red-500/60 dark:bg-red-500/15 dark:text-red-200",
+    dot: "bg-red-700 dark:bg-red-400",
     icon: <AlertTriangle className="h-3 w-3" />,
   },
   [Status.DONE]: {
-    container: "border-emerald-500/50 bg-emerald-500/10 text-emerald-300",
-    dot: "bg-emerald-400",
+    container:
+      "border-emerald-300 bg-emerald-100 text-emerald-900 dark:border-emerald-500/60 dark:bg-emerald-500/15 dark:text-emerald-200",
+    dot: "bg-emerald-600 dark:bg-emerald-300",
     icon: <CheckCircle2 className="h-3 w-3" />,
   },
 };

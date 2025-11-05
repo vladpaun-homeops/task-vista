@@ -73,7 +73,7 @@ export function TaskStatusMenuButton<T extends TaskActionTarget>({
           >
             <span>{option.label}</span>
             {option.value === task.status && (
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
             )}
           </DropdownMenuItem>
         ))}
@@ -131,7 +131,7 @@ export function TaskPriorityMenuButton<T extends TaskActionTarget>({
           >
             <span>{option.label}</span>
             {option.value === task.priority && (
-              <CheckCircle2 className="h-4 w-4 text-amber-300" />
+              <CheckCircle2 className="h-4 w-4 text-amber-600 dark:text-amber-300" />
             )}
           </DropdownMenuItem>
         ))}

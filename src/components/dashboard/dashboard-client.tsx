@@ -354,8 +354,8 @@ type SectionHeaderProps = {
 function SectionHeader({ title, description, tone = "default" }: SectionHeaderProps) {
   const toneStyles: Record<NonNullable<SectionHeaderProps["tone"]>, string> = {
     default: "text-muted-foreground",
-    danger: "text-red-300",
-    warning: "text-amber-300",
+    danger: "text-red-600 dark:text-red-300",
+    warning: "text-amber-600 dark:text-amber-300",
   };
 
   return (

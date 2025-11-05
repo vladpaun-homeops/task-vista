@@ -134,8 +134,8 @@ export function TaskList({
 function DueDateChip({ dueDate }: { dueDate: string | null }) {
   if (!dueDate) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-slate-600/40 bg-slate-800/60 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-slate-200">
-        <CalendarDays className="h-3 w-3 opacity-70" />
+      <span className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-slate-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-900 dark:border-slate-700/60 dark:bg-slate-900/60 dark:text-slate-200">
+        <CalendarDays className="h-3 w-3 text-slate-600 dark:text-slate-300" />
         No due date
       </span>
     );
@@ -144,16 +144,16 @@ function DueDateChip({ dueDate }: { dueDate: string | null }) {
   const formattedDate = formatDateLabel(dueDate);
   if (!formattedDate) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-slate-600/40 bg-slate-800/60 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-slate-200">
-        <CalendarDays className="h-3 w-3 opacity-70" />
+      <span className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-slate-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-900 dark:border-slate-700/60 dark:bg-slate-900/60 dark:text-slate-200">
+        <CalendarDays className="h-3 w-3 text-slate-600 dark:text-slate-300" />
         Invalid date
       </span>
     );
   }
 
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-violet-500/40 bg-violet-500/10 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-violet-200">
-      <CalendarDays className="h-3 w-3 opacity-80" />
+    <span className="inline-flex items-center gap-1 rounded-full border border-violet-300 bg-violet-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-violet-900 dark:border-violet-500/60 dark:bg-violet-500/15 dark:text-violet-200">
+      <CalendarDays className="h-3 w-3 text-violet-600 dark:text-violet-300" />
       Due {formattedDate}
     </span>
   );
