@@ -13,7 +13,7 @@ export function formatDateLabel(value: string | null | undefined): string | null
   }
 
   const datePart = value.includes("T") ? value.split("T")[0] : value;
-  const [year, month, day] = datePart.split("-");
+  const [, month, day] = datePart.split("-");
 
   const monthIndex = Number.parseInt(month ?? "", 10) - 1;
   const dayNumber = Number.parseInt(day ?? "", 10);

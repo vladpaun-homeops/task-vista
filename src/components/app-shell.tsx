@@ -8,11 +8,12 @@ import {
   Activity,
   CalendarDays,
   Home,
-  ListTodo,
-  Settings,
-  Tag as TagIcon,
   LineChart,
+  ListTodo,
+  Plus,
+  Settings,
   Sparkles,
+  Tag as TagIcon,
 } from "lucide-react";
 
 import { ModeToggle } from "@/components/mode-toggle";
@@ -57,7 +58,7 @@ export function AppShell({ children }: AppShellProps) {
         <SidebarHeader className="px-4 py-5">
           <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold">
             <Sparkles className="h-5 w-5 text-primary" />
-            Todo AI
+            <span className="group-data-[collapsible=icon]:hidden">Todo AI</span>
           </Link>
         </SidebarHeader>
         <SidebarContent>
@@ -81,11 +82,13 @@ export function AppShell({ children }: AppShellProps) {
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
-        <SidebarFooter className="mt-auto flex items-center justify-between gap-2 px-4 py-4">
-          <Button asChild variant="outline" size="sm" className="w-full">
-            <Link href="/tasks?status=NOT_STARTED">Quick Start</Link>
+        <SidebarFooter className="mt-auto px-4 py-4">
+          <Button asChild size="sm" className="w-full justify-center">
+            <Link href="/tasks?create=1" className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              <span className="group-data-[collapsible=icon]:hidden">Add task</span>
+            </Link>
           </Button>
-          <ModeToggle />
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>
@@ -96,13 +99,14 @@ export function AppShell({ children }: AppShellProps) {
             <p className="text-sm font-medium text-muted-foreground">
               {navigation.find((item) => pathname.startsWith(item.href))?.label ?? "Dashboard"}
             </p>
-            <div className="hidden items-center gap-2 sm:flex">
-              <Button asChild size="sm">
+            <div className="flex items-center gap-2">
+              <Button asChild size="sm" className="hidden sm:inline-flex">
                 <Link href="/tasks">View tasks</Link>
               </Button>
-              <Button asChild size="sm" variant="outline">
+              <Button asChild size="sm" variant="outline" className="hidden sm:inline-flex">
                 <Link href="/tags">Manage tags</Link>
               </Button>
+              <ModeToggle />
             </div>
           </div>
         </div>

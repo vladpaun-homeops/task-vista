@@ -148,7 +148,7 @@ export function TaskForm({
             control={form.control}
             name="dueDate"
             render={({ field }) => (
-              <FormItem className="flex flex-col">
+              <FormItem className="flex flex-col gap-2">
                 <FormLabel>Due date</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
@@ -156,12 +156,14 @@ export function TaskForm({
                       <Button
                         variant="outline"
                         className={cn(
-                          "justify-start text-left font-normal",
+                          "w-full justify-start text-left font-normal",
                           !field.value && "text-muted-foreground"
                         )}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {field.value ? format(field.value, "PPP") : "No due date"}
+                        <span className="truncate">
+                          {field.value ? format(field.value, "PPP") : "No due date"}
+                        </span>
                       </Button>
                     </FormControl>
                   </PopoverTrigger>
@@ -197,7 +199,7 @@ export function TaskForm({
                 <FormLabel>Priority</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select priority" />
                     </SelectTrigger>
                   </FormControl>
@@ -217,16 +219,16 @@ export function TaskForm({
 
         <FormField
           control={form.control}
-          name="status"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Status</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                </FormControl>
+            name="status"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Status</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                  </FormControl>
                 <SelectContent>
                   {statusOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
