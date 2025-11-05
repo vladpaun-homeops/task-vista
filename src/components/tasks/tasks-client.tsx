@@ -4,7 +4,7 @@ import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Plus, Tag as TagIcon } from "lucide-react";
 
-import type { Priority, Status } from "@/generated/prisma/enums";
+import { Priority, Status } from "@/generated/prisma/enums";
 import { statusOptions } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -39,6 +39,17 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
   const [isCreateTagOpen, setIsCreateTagOpen] = React.useState(false);
   const [taskToEdit, setTaskToEdit] = React.useState<TaskRow | null>(null);
+  const suppressCreateSyncRef = React.useRef(false);
+
+  const activeTasks = React.useMemo(
+    () => tasks.filter((task) => task.status !== Status.DONE),
+    [tasks]
+  );
+  const completedTasks = React.useMemo(
+    () => tasks.filter((task) => task.status === Status.DONE),
+    [tasks]
+  );
+  const shouldShowActiveSection = activeTasks.length > 0 || completedTasks.length === 0;
 
   const createParam = searchParams.get("create");
 
@@ -63,23 +74,42 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
 
   const handleOpenCreate = React.useCallback(() => {
     setIsCreateOpen(true);
+    suppressCreateSyncRef.current = false;
     updateCreateQuery(true);
   }, [updateCreateQuery]);
 
   React.useEffect(() => {
     if (createParam && !isCreateOpen) {
+      if (suppressCreateSyncRef.current) {
+        return;
+      }
       setIsCreateOpen(true);
+      return;
+    }
+
+    if (!createParam && suppressCreateSyncRef.current) {
+      suppressCreateSyncRef.current = false;
+      return;
+    }
+
+    if (!createParam && isCreateOpen) {
+      setIsCreateOpen(false);
     }
   }, [createParam, isCreateOpen]);
 
   const handleCreateOpenChange = React.useCallback(
     (open: boolean) => {
       setIsCreateOpen(open);
-      if (!open && createParam) {
-        updateCreateQuery(false);
+      if (open) {
+        suppressCreateSyncRef.current = false;
+        updateCreateQuery(true);
+        return;
       }
+
+      suppressCreateSyncRef.current = true;
+      updateCreateQuery(false);
     },
-    [createParam, updateCreateQuery]
+    [updateCreateQuery]
   );
 
   const handleCreate = React.useCallback(
@@ -186,13 +216,45 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
 
       <TaskSummary counts={statusCounts} />
 
-      <TaskTable
-        tasks={tasks}
-        onEdit={(task) => setTaskToEdit(task)}
-        onDelete={handleDelete}
-        onStatusChange={handleStatusChange}
-        onPriorityChange={handlePriorityChange}
-      />
+      {shouldShowActiveSection && (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-foreground">Active tasks</h2>
+            <span className="text-sm text-muted-foreground">{activeTasks.length}</span>
+          </div>
+          {activeTasks.length ? (
+            <TaskTable
+              tasks={activeTasks}
+              onEdit={(task) => setTaskToEdit(task)}
+              onDelete={handleDelete}
+              onStatusChange={handleStatusChange}
+              onPriorityChange={handlePriorityChange}
+            />
+          ) : (
+            <div className="rounded-lg border border-dashed border-border/60 bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+              {tasks.length === 0
+                ? "No tasks found. Adjust your filters or add one above."
+                : "Nice work—nothing left on your plate right now."}
+            </div>
+          )}
+        </section>
+      )}
+
+      {completedTasks.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-foreground">Completed</h2>
+            <span className="text-sm text-muted-foreground">{completedTasks.length}</span>
+          </div>
+          <TaskTable
+            tasks={completedTasks}
+            onEdit={(task) => setTaskToEdit(task)}
+            onDelete={handleDelete}
+            onStatusChange={handleStatusChange}
+            onPriorityChange={handlePriorityChange}
+          />
+        </section>
+      )}
 
       <Sheet open={isCreateOpen} onOpenChange={handleCreateOpenChange}>
         <SheetContent className="w-full gap-0 p-0 sm:max-w-lg">

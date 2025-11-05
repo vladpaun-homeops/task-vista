@@ -21,7 +21,6 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -253,53 +252,55 @@ export function DashboardClient({
       )}
 
       <Sheet open={isCreateTaskOpen} onOpenChange={setIsCreateTaskOpen}>
-        <SheetContent>
-          <SheetHeader>
+        <SheetContent className="w-full gap-0 p-0 sm:max-w-lg">
+          <SheetHeader className="px-6 pt-6">
             <SheetTitle>Create task</SheetTitle>
             <SheetDescription>Capture a new task for your queue.</SheetDescription>
           </SheetHeader>
-          <ScrollArea className="h-full px-1">
-            <TaskForm
-              tags={tags}
-              onSubmit={handleCreateTask}
-              submitLabel="Create task"
-              onSuccess={() => setIsCreateTaskOpen(false)}
-            />
+          <ScrollArea className="h-full">
+            <div className="px-6 pb-8 pt-2">
+              <TaskForm
+                tags={tags}
+                onSubmit={handleCreateTask}
+                submitLabel="Create task"
+                onSuccess={() => setIsCreateTaskOpen(false)}
+              />
+            </div>
           </ScrollArea>
-          <SheetFooter />
         </SheetContent>
       </Sheet>
 
       <Sheet open={!!taskToEdit} onOpenChange={(open) => !open && setTaskToEdit(null)}>
-        <SheetContent>
-          <SheetHeader>
+        <SheetContent className="w-full gap-0 p-0 sm:max-w-lg">
+          <SheetHeader className="px-6 pt-6">
             <SheetTitle>Edit task</SheetTitle>
             <SheetDescription>Adjust details, status, or tags.</SheetDescription>
           </SheetHeader>
-          <ScrollArea className="h-full px-1">
-            {taskToEdit && (
-              <TaskForm
-                tags={tags}
-                submitLabel="Save changes"
-                defaultValues={{
-                  title: taskToEdit.title,
-                  description: taskToEdit.description ?? "",
-                  dueDate: taskToEdit.dueDate ? new Date(taskToEdit.dueDate) : null,
-                  priority: taskToEdit.priority,
-                  status: taskToEdit.status,
-                  tagIds: taskToEdit.tags.map((tag) => tag.id),
-                }}
-                onSubmit={(values) =>
-                  handleUpdateTask({
-                    ...values,
-                    id: taskToEdit.id,
-                  })
-                }
-                onSuccess={() => setTaskToEdit(null)}
-              />
-            )}
+          <ScrollArea className="h-full">
+            <div className="px-6 pb-8 pt-2">
+              {taskToEdit && (
+                <TaskForm
+                  tags={tags}
+                  submitLabel="Save changes"
+                  defaultValues={{
+                    title: taskToEdit.title,
+                    description: taskToEdit.description ?? "",
+                    dueDate: taskToEdit.dueDate ? new Date(taskToEdit.dueDate) : null,
+                    priority: taskToEdit.priority,
+                    status: taskToEdit.status,
+                    tagIds: taskToEdit.tags.map((tag) => tag.id),
+                  }}
+                  onSubmit={(values) =>
+                    handleUpdateTask({
+                      ...values,
+                      id: taskToEdit.id,
+                    })
+                  }
+                  onSuccess={() => setTaskToEdit(null)}
+                />
+              )}
+            </div>
           </ScrollArea>
-          <SheetFooter />
         </SheetContent>
       </Sheet>
 
