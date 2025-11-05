@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 import { Priority, Status } from "@/generated/prisma/enums";
+import { taskQuickFilterValues } from "@/lib/task-quick-filters";
+import type { TaskQuickFilterValue } from "@/lib/task-quick-filters";
 
 const statusEnum = z.nativeEnum(Status);
 const priorityEnum = z.nativeEnum(Priority);
@@ -34,6 +36,11 @@ export const taskDeleteSchema = z.object({
   id: z.string().cuid(),
 });
 
+const quickFilterValues = taskQuickFilterValues as [
+  TaskQuickFilterValue,
+  ...TaskQuickFilterValue[]
+];
+
 export const taskFiltersSchema = z.object({
   status: statusEnum.optional(),
   tag: z.string().cuid().optional(),
@@ -42,6 +49,7 @@ export const taskFiltersSchema = z.object({
     .max(120, "Query is too long")
     .optional()
     .transform((value) => value?.trim() ?? undefined),
+  view: z.enum(quickFilterValues).optional(),
 });
 
 export type TaskFormValues = z.infer<typeof taskFormSchema>;

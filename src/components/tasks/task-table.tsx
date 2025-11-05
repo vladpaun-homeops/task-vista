@@ -2,10 +2,13 @@
 
 import * as React from "react";
 import { CalendarClock, Pencil, Trash2 } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 
 import { Priority, Status } from "@/generated/prisma/enums";
 import { cn, formatDateLabel } from "@/lib/utils";
+import { sortTasks, nextSortConfig, type SortConfig, type TaskSortKey } from "@/lib/task-sorting";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +57,10 @@ type TaskTableProps = {
     task: TaskRow,
     priority: Priority
   ) => Promise<{ success: boolean; error?: string } | void>;
+  selectable?: boolean;
+  selectedIds?: Set<string> | string[];
+  onSelectChange?: (taskId: string, selected: boolean) => void;
+  onSelectAll?: (taskIds: string[], selected: boolean) => void;
 };
 
 export function TaskTable({
@@ -62,8 +69,15 @@ export function TaskTable({
   onDelete,
   onStatusChange,
   onPriorityChange,
+  selectable = true,
+  selectedIds,
+  onSelectChange,
+  onSelectAll,
 }: TaskTableProps) {
-  const [dueDateSort, setDueDateSort] = React.useState<"asc" | "desc" | null>("asc");
+  const [sortConfig, setSortConfig] = React.useState<SortConfig>({
+    key: "dueDate",
+    direction: "asc",
+  });
   const [now, setNow] = React.useState(() => Date.now());
   const [deleteTarget, setDeleteTarget] = React.useState<TaskRow | null>(null);
   const [deleteError, setDeleteError] = React.useState<string | null>(null);
@@ -73,57 +87,86 @@ export function TaskTable({
     setNow(Date.now());
   }, [tasks]);
 
-  const sortedTasks = React.useMemo(() => {
-    if (!dueDateSort) {
-      return tasks;
-    }
+  const sortedTasks = React.useMemo(
+    () => sortTasks(tasks, sortConfig),
+    [tasks, sortConfig]
+  );
 
-    const sorted = [...tasks].sort((a, b) => {
-      const aDue = a.dueDate ? Date.parse(a.dueDate) : null;
-      const bDue = b.dueDate ? Date.parse(b.dueDate) : null;
+  const isSelectable = selectable && typeof onSelectChange === "function";
 
-      if (aDue === null && bDue === null) return 0;
-      if (aDue === null) return 1;
-      if (bDue === null) return -1;
+  const selectedIdSet = React.useMemo(() => {
+    if (!selectedIds) return new Set<string>();
+    return selectedIds instanceof Set ? new Set(selectedIds) : new Set(selectedIds);
+  }, [selectedIds]);
 
-      return dueDateSort === "asc" ? aDue - bDue : bDue - aDue;
-    });
+  const allIds = React.useMemo(() => sortedTasks.map((task) => task.id), [sortedTasks]);
+  const selectedCountInView = isSelectable
+    ? allIds.reduce((count, id) => count + (selectedIdSet.has(id) ? 1 : 0), 0)
+    : 0;
+  const allSelected = isSelectable && allIds.length > 0 && selectedCountInView === allIds.length;
+  const someSelected = isSelectable && selectedCountInView > 0 && selectedCountInView < allIds.length;
 
-    return sorted;
-  }, [tasks, dueDateSort]);
-
-  const handleDueDateSortToggle = React.useCallback(() => {
-    setDueDateSort((current) => {
-      if (current === "asc") return "desc";
-      if (current === "desc") return null;
-      return "asc";
-    });
+  const handleSortToggle = React.useCallback((key: TaskSortKey) => {
+    setSortConfig((current) => nextSortConfig(current, key));
   }, []);
+
+  const getDirectionFor = React.useCallback(
+    (key: TaskSortKey) =>
+      sortConfig && sortConfig.key === key ? sortConfig.direction : null,
+    [sortConfig]
+  );
 
   return (
     <div className="rounded-lg border bg-card">
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-8">
+              {isSelectable ? (
+                <Checkbox
+                  checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                  onCheckedChange={(checked) =>
+                    onSelectAll?.(allIds, checked === true)
+                  }
+                  disabled={!onSelectAll}
+                  aria-label="Select all"
+                />
+              ) : (
+                <span className="sr-only">Select</span>
+              )}
+            </TableHead>
             <TableHead className="w-12">
               <span className="sr-only">Complete</span>
             </TableHead>
             <TableHead>Task</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Priority</TableHead>
             <TableHead>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="-ml-2 gap-2"
-                onClick={handleDueDateSortToggle}
-              >
-                <div className="flex items-center gap-2">
-                  <CalendarClock className="h-4 w-4 text-muted-foreground" />
-                  <span>Due</span>
-                </div>
-                <SortIndicator direction={dueDateSort} />
-              </Button>
+              <HeaderSortButton
+                label="Status"
+                direction={getDirectionFor("status")}
+                onClick={() => handleSortToggle("status")}
+              />
+            </TableHead>
+            <TableHead>
+              <HeaderSortButton
+                label="Priority"
+                direction={getDirectionFor("priority")}
+                onClick={() => handleSortToggle("priority")}
+              />
+            </TableHead>
+            <TableHead>
+              <HeaderSortButton
+                label="Due"
+                icon={<CalendarClock className="h-4 w-4 text-muted-foreground" />}
+                direction={getDirectionFor("dueDate")}
+                onClick={() => handleSortToggle("dueDate")}
+              />
+            </TableHead>
+            <TableHead>
+              <HeaderSortButton
+                label="Created"
+                direction={getDirectionFor("createdAt")}
+                onClick={() => handleSortToggle("createdAt")}
+              />
             </TableHead>
             <TableHead className="w-20 text-right">
               <span className="sr-only">Actions</span>
@@ -136,9 +179,25 @@ export function TaskTable({
               const dueDate = task.dueDate ? new Date(task.dueDate) : null;
               const isPastDue = dueDate ? dueDate.getTime() < now : false;
               const dueDateLabel = task.dueDate ? formatDateLabel(task.dueDate) : null;
+              const createdAtDate = task.createdAt ? new Date(task.createdAt) : null;
+              const createdAtLabel =
+                createdAtDate && !Number.isNaN(createdAtDate.getTime())
+                  ? formatDistanceToNow(createdAtDate, { addSuffix: true })
+                  : null;
 
               return (
                 <TableRow key={task.id}>
+                  <TableCell className="w-8">
+                    {isSelectable && (
+                      <Checkbox
+                        checked={selectedIdSet.has(task.id)}
+                        onCheckedChange={(checked) =>
+                          onSelectChange?.(task.id, checked === true)
+                        }
+                        aria-label={`Select ${task.title}`}
+                      />
+                    )}
+                  </TableCell>
                   <TableCell className="w-12">
                     <TaskCompleteButton
                       task={task}
@@ -182,6 +241,13 @@ export function TaskTable({
                     <span className="text-xs text-muted-foreground">
                       {task.dueDate ? "Invalid date" : "No due date"}
                     </span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {createdAtLabel ? (
+                    <span className="text-xs text-muted-foreground">{createdAtLabel}</span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
                   )}
                 </TableCell>
                 <TableCell className="w-20">
@@ -260,7 +326,7 @@ export function TaskTable({
             })
           ) : (
             <TableRow>
-              <TableCell colSpan={6} className="h-24 text-center text-sm text-muted-foreground">
+              <TableCell colSpan={8} className="h-24 text-center text-sm text-muted-foreground">
                 No tasks found. Adjust your filters or add one above.
               </TableCell>
             </TableRow>
@@ -280,5 +346,33 @@ function SortIndicator({ direction }: { direction: "asc" | "desc" | null }) {
     <span className="text-xs text-muted-foreground">
       {direction === "asc" ? "↑" : "↓"}
     </span>
+  );
+}
+
+function HeaderSortButton({
+  label,
+  direction,
+  onClick,
+  icon,
+}: {
+  label: string;
+  direction: "asc" | "desc" | null;
+  onClick: () => void;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="-ml-2 gap-2"
+      onClick={onClick}
+    >
+      <div className="flex items-center gap-2">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <SortIndicator direction={direction} />
+    </Button>
   );
 }

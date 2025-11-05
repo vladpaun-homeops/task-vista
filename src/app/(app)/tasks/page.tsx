@@ -1,5 +1,8 @@
+import { addDays } from "date-fns";
+
 import { Prisma } from "@/generated/prisma/client";
-import type { Status } from "@/generated/prisma/enums";
+import { Status } from "@/generated/prisma/enums";
+import type { Status as StatusType } from "@/generated/prisma/enums";
 
 import { TasksClient } from "@/components/tasks/tasks-client";
 import { prisma } from "@/server/db";
@@ -16,17 +19,57 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
     typeof resolvedSearchParams?.status === "string" ? resolvedSearchParams.status : null;
   const rawTag = typeof resolvedSearchParams?.tag === "string" ? resolvedSearchParams.tag : null;
   const rawQuery = typeof resolvedSearchParams?.q === "string" ? resolvedSearchParams.q : null;
+  const rawView = typeof resolvedSearchParams?.view === "string" ? resolvedSearchParams.view : null;
 
   const parsedFilters = taskFiltersSchema.safeParse({
     status: rawStatus && rawStatus !== "ALL" ? rawStatus : undefined,
     tag: rawTag && rawTag !== "ALL" ? rawTag : undefined,
     q: rawQuery ?? undefined,
+    view: rawView && rawView !== "ALL" ? rawView : undefined,
   });
 
   const filters = parsedFilters.success ? parsedFilters.data : null;
   const statusFilter = filters?.status;
   const tagFilter = filters?.tag;
   const queryFilter = filters?.q;
+  const viewFilter = filters?.view;
+
+  const now = new Date();
+  const soonThreshold = addDays(now, 7);
+
+  let viewWhere: Prisma.TaskWhereInput | undefined;
+
+  switch (viewFilter) {
+    case "overdue":
+      viewWhere = {
+        OR: [
+          {
+            status: { not: Status.DONE },
+            dueDate: { lt: now },
+          },
+          { status: Status.OVERDUE },
+        ],
+      };
+      break;
+    case "due-soon":
+      viewWhere = {
+        status: { not: Status.DONE },
+        dueDate: { gte: now, lte: soonThreshold },
+      };
+      break;
+    case "no-due":
+      viewWhere = {
+        dueDate: null,
+      };
+      break;
+    case "completed":
+      viewWhere = {
+        status: Status.DONE,
+      };
+      break;
+    default:
+      viewWhere = undefined;
+  }
 
   const where: Prisma.TaskWhereInput = {
     ...(statusFilter && { status: statusFilter }),
@@ -37,17 +80,18 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
         { description: { contains: queryFilter, mode: "insensitive" } },
       ],
     }),
+    ...(viewWhere ?? {}),
   };
 
-  const [tasks, tags, statusGroups] = await Promise.all([
+  const orderBy: Prisma.TaskOrderByWithRelationInput[] = viewFilter === "completed"
+    ? [{ updatedAt: "desc" }, { title: "asc" }]
+    : [{ dueDate: "asc" }, { priority: "desc" }, { createdAt: "desc" }];
+
+  const [tasks, tags] = await Promise.all([
     prisma.task.findMany({
       where,
       include: { tags: true },
-      orderBy: [
-        { dueDate: "asc" },
-        { priority: "desc" },
-        { createdAt: "desc" },
-      ],
+      orderBy,
     }),
     prisma.tag.findMany({
       include: { _count: { select: { tasks: true } } },
@@ -55,10 +99,6 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
     }) as Promise<
       Array<{ id: string; name: string; color: string; _count: { tasks: number } }>
     >,
-    prisma.task.groupBy({
-      by: ["status"],
-      _count: { _all: true },
-    }),
   ]);
 
   const tasksForClient = tasks.map((task) => ({
@@ -84,16 +124,10 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
     usageCount: tag._count.tasks,
   }));
 
-  const statusCounts = statusGroups.reduce<Partial<Record<Status, number>>>((acc, group) => {
-    acc[group.status as Status] = group._count._all;
-    return acc;
-  }, {});
-
   return (
     <TasksClient
       tasks={tasksForClient}
       tags={tagsForClient}
-      statusCounts={statusCounts}
     />
   );
 }

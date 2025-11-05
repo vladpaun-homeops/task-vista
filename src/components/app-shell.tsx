@@ -34,6 +34,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { Toaster } from "@/components/ui/sonner";
 
 type AppShellProps = {
   children: ReactNode;
@@ -114,6 +115,7 @@ export function AppShell({ children }: AppShellProps) {
           <div className="mx-auto w-full max-w-6xl space-y-6">{children}</div>
         </main>
       </SidebarInset>
+      <Toaster position="bottom-right" richColors closeButton duration={4000} />
     </SidebarProvider>
   );
 }
