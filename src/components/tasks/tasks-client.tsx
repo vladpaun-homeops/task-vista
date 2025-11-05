@@ -30,10 +30,9 @@ import { toast } from "@/components/ui/sonner";
 type TasksClientProps = {
   tasks: TaskRow[];
   tags: TagOption[];
-  statusCounts: Partial<Record<Status, number>>;
 };
 
-export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
+export function TasksClient({ tasks, tags }: TasksClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -43,6 +42,7 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
   const suppressCreateSyncRef = React.useRef(false);
   const [taskItems, setTaskItems] = React.useState<TaskRow[]>(tasks);
   const taskItemsRef = React.useRef(tasks);
+  const [selectedTaskIds, setSelectedTaskIds] = React.useState<Set<string>>(new Set());
 
   React.useEffect(() => {
     setTaskItems(tasks);
@@ -51,6 +51,25 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
 
   React.useEffect(() => {
     taskItemsRef.current = taskItems;
+  }, [taskItems]);
+
+  React.useEffect(() => {
+    const validIds = new Set(taskItems.map((task) => task.id));
+    setSelectedTaskIds((prev) => {
+      let changed = false;
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (validIds.has(id)) {
+          next.add(id);
+        } else {
+          changed = true;
+        }
+      });
+      if (!changed && next.size === prev.size) {
+        return prev;
+      }
+      return next;
+    });
   }, [taskItems]);
 
   const findTags = React.useCallback(
@@ -98,6 +117,39 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
     }
     return base;
   }, [taskItems]);
+
+  const handleSelectTask = React.useCallback((id: string, selected: boolean) => {
+    setSelectedTaskIds((prev) => {
+      const next = new Set(prev);
+      if (selected) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSelectAllTasks = React.useCallback((ids: string[], selected: boolean) => {
+    setSelectedTaskIds((prev) => {
+      const next = new Set(prev);
+      if (selected) {
+        ids.forEach((id) => next.add(id));
+      } else {
+        ids.forEach((id) => next.delete(id));
+      }
+      return next;
+    });
+  }, []);
+
+  const clearSelection = React.useCallback(() => {
+    setSelectedTaskIds(new Set());
+  }, []);
+
+  const selectedTasks = React.useMemo(
+    () => taskItems.filter((task) => selectedTaskIds.has(task.id)),
+    [taskItems, selectedTaskIds]
+  );
 
   const createParam = searchParams.get("create");
 
@@ -240,11 +292,18 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
   const handleDelete = React.useCallback(
     async (task: TaskRow) => {
       const previous = taskItemsRef.current;
+      const previousSelection = new Set(selectedTaskIds);
+      setSelectedTaskIds((prev) => {
+        const next = new Set(prev);
+        next.delete(task.id);
+        return next;
+      });
       setTaskItems((current) => current.filter((item) => item.id !== task.id));
 
       const result = await deleteTaskAction({ id: task.id });
       if (!result.success) {
         setTaskItems(previous);
+        setSelectedTaskIds(previousSelection);
         toast.error("Failed to delete task", {
           description: result.error ?? "Please try again.",
         });
@@ -257,7 +316,7 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
       });
       return { success: true };
     },
-    [router]
+    [router, selectedTaskIds]
   );
 
   const handleStatusChange = React.useCallback(
@@ -333,6 +392,91 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
     [router]
   );
 
+  const handleBulkMarkDone = React.useCallback(async () => {
+    const selectedArray = Array.from(selectedTaskIds);
+    if (selectedArray.length === 0) {
+      return;
+    }
+
+    const previous = taskItemsRef.current;
+    const selectedSet = new Set(selectedArray);
+    const tasksToUpdate = previous.filter(
+      (task) => selectedSet.has(task.id) && task.status !== Status.DONE
+    );
+
+    if (tasksToUpdate.length === 0) {
+      clearSelection();
+      return;
+    }
+
+    const now = new Date().toISOString();
+    setTaskItems((current) =>
+      current.map((task) =>
+        selectedSet.has(task.id)
+          ? { ...task, status: Status.DONE, updatedAt: now }
+          : task
+      )
+    );
+    clearSelection();
+
+    const results = await Promise.all(
+      tasksToUpdate.map((task) => updateTaskStatusAction({ id: task.id, status: Status.DONE }))
+    );
+
+    if (results.some((res) => !res?.success)) {
+      setTaskItems(previous);
+      setSelectedTaskIds(new Set(selectedArray));
+      toast.error("Failed to update some tasks", {
+        description: "Please try again.",
+      });
+      return;
+    }
+
+    toast.success(
+      tasksToUpdate.length === 1
+        ? "Marked 1 task as done"
+        : `Marked ${tasksToUpdate.length} tasks as done`
+    );
+    React.startTransition(() => {
+      router.refresh();
+    });
+  }, [clearSelection, router, selectedTaskIds]);
+
+  const handleBulkDelete = React.useCallback(async () => {
+    const selectedArray = Array.from(selectedTaskIds);
+    if (selectedArray.length === 0) {
+      return;
+    }
+
+    const previous = taskItemsRef.current;
+    const selectedSet = new Set(selectedArray);
+
+    setTaskItems(previous.filter((task) => !selectedSet.has(task.id)));
+    clearSelection();
+
+    const results = await Promise.all(
+      selectedArray.map((id) => deleteTaskAction({ id }))
+    );
+
+    if (results.some((res) => !res?.success)) {
+      setTaskItems(previous);
+      setSelectedTaskIds(new Set(selectedArray));
+      toast.error("Failed to delete some tasks", {
+        description: "Please try again.",
+      });
+      return;
+    }
+
+    toast.success(
+      selectedArray.length === 1
+        ? "Deleted 1 task"
+        : `Deleted ${selectedArray.length} tasks`
+    );
+    React.startTransition(() => {
+      router.refresh();
+    });
+  }, [clearSelection, router, selectedTaskIds]);
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -359,6 +503,33 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
 
       <TaskSummary counts={summaryCounts} />
 
+      {selectedTaskIds.size > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary/40 bg-primary/5 p-3">
+          <span className="text-sm font-medium text-primary">
+            {selectedTaskIds.size} selected
+          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              onClick={handleBulkMarkDone}
+              disabled={!selectedTasks.some((task) => task.status !== Status.DONE)}
+            >
+              Mark done
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={handleBulkDelete}
+            >
+              Delete
+            </Button>
+            <Button size="sm" variant="ghost" onClick={clearSelection}>
+              Clear
+            </Button>
+          </div>
+        </div>
+      )}
+
       {shouldShowActiveSection && (
         <section className="space-y-3">
           <div className="flex items-center justify-between">
@@ -372,6 +543,9 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
               onDelete={handleDelete}
               onStatusChange={handleStatusChange}
               onPriorityChange={handlePriorityChange}
+              selectedIds={selectedTaskIds}
+              onSelectChange={handleSelectTask}
+              onSelectAll={handleSelectAllTasks}
             />
           ) : (
             <div className="rounded-lg border border-dashed border-border/60 bg-muted/30 p-6 text-center text-sm text-muted-foreground">
@@ -395,6 +569,9 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
             onDelete={handleDelete}
             onStatusChange={handleStatusChange}
             onPriorityChange={handlePriorityChange}
+            selectedIds={selectedTaskIds}
+            onSelectChange={handleSelectTask}
+            onSelectAll={handleSelectAllTasks}
           />
         </section>
       )}

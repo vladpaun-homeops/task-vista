@@ -8,6 +8,7 @@ import { Priority, Status } from "@/generated/prisma/enums";
 import { cn, formatDateLabel } from "@/lib/utils";
 import { sortTasks, nextSortConfig, type SortConfig, type TaskSortKey } from "@/lib/task-sorting";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -56,6 +57,10 @@ type TaskTableProps = {
     task: TaskRow,
     priority: Priority
   ) => Promise<{ success: boolean; error?: string } | void>;
+  selectable?: boolean;
+  selectedIds?: Set<string> | string[];
+  onSelectChange?: (taskId: string, selected: boolean) => void;
+  onSelectAll?: (taskIds: string[], selected: boolean) => void;
 };
 
 export function TaskTable({
@@ -64,6 +69,10 @@ export function TaskTable({
   onDelete,
   onStatusChange,
   onPriorityChange,
+  selectable = true,
+  selectedIds,
+  onSelectChange,
+  onSelectAll,
 }: TaskTableProps) {
   const [sortConfig, setSortConfig] = React.useState<SortConfig>({
     key: "dueDate",
@@ -83,6 +92,20 @@ export function TaskTable({
     [tasks, sortConfig]
   );
 
+  const isSelectable = selectable && typeof onSelectChange === "function";
+
+  const selectedIdSet = React.useMemo(() => {
+    if (!selectedIds) return new Set<string>();
+    return selectedIds instanceof Set ? new Set(selectedIds) : new Set(selectedIds);
+  }, [selectedIds]);
+
+  const allIds = React.useMemo(() => sortedTasks.map((task) => task.id), [sortedTasks]);
+  const selectedCountInView = isSelectable
+    ? allIds.reduce((count, id) => count + (selectedIdSet.has(id) ? 1 : 0), 0)
+    : 0;
+  const allSelected = isSelectable && allIds.length > 0 && selectedCountInView === allIds.length;
+  const someSelected = isSelectable && selectedCountInView > 0 && selectedCountInView < allIds.length;
+
   const handleSortToggle = React.useCallback((key: TaskSortKey) => {
     setSortConfig((current) => nextSortConfig(current, key));
   }, []);
@@ -98,6 +121,20 @@ export function TaskTable({
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-8">
+              {isSelectable ? (
+                <Checkbox
+                  checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                  onCheckedChange={(checked) =>
+                    onSelectAll?.(allIds, checked === true)
+                  }
+                  disabled={!onSelectAll}
+                  aria-label="Select all"
+                />
+              ) : (
+                <span className="sr-only">Select</span>
+              )}
+            </TableHead>
             <TableHead className="w-12">
               <span className="sr-only">Complete</span>
             </TableHead>
@@ -150,6 +187,17 @@ export function TaskTable({
 
               return (
                 <TableRow key={task.id}>
+                  <TableCell className="w-8">
+                    {isSelectable && (
+                      <Checkbox
+                        checked={selectedIdSet.has(task.id)}
+                        onCheckedChange={(checked) =>
+                          onSelectChange?.(task.id, checked === true)
+                        }
+                        aria-label={`Select ${task.title}`}
+                      />
+                    )}
+                  </TableCell>
                   <TableCell className="w-12">
                     <TaskCompleteButton
                       task={task}
@@ -278,7 +326,7 @@ export function TaskTable({
             })
           ) : (
             <TableRow>
-              <TableCell colSpan={7} className="h-24 text-center text-sm text-muted-foreground">
+              <TableCell colSpan={8} className="h-24 text-center text-sm text-muted-foreground">
                 No tasks found. Adjust your filters or add one above.
               </TableCell>
             </TableRow>

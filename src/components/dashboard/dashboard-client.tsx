@@ -70,7 +70,6 @@ type DashboardClientProps = {
   dueSoon: DashboardTask[];
   backlog: DashboardTask[];
   completed: DashboardTask[];
-  statusCounts: Partial<Record<Status, number>>;
   tags: TagOption[];
 };
 
@@ -79,7 +78,6 @@ export function DashboardClient({
   dueSoon,
   backlog,
   completed,
-  statusCounts,
   tags,
 }: DashboardClientProps) {
   const router = useRouter();

@@ -8,14 +8,10 @@ export default async function DashboardPage() {
   const now = new Date();
   const soonThreshold = addDays(now, 7);
 
-  const [tasks, statusGroups, tags] = await Promise.all([
+  const [tasks, tags] = await Promise.all([
     prisma.task.findMany({
       include: { tags: true },
       orderBy: [{ updatedAt: "desc" }],
-    }),
-    prisma.task.groupBy({
-      by: ["status"],
-      _count: { _all: true },
     }),
     prisma.tag.findMany({
       orderBy: { name: "asc" },
@@ -93,11 +89,6 @@ export default async function DashboardPage() {
 
   const completedLimited = completed.slice(0, 5);
 
-  const statusCounts = statusGroups.reduce<Partial<Record<Status, number>>>((acc, group) => {
-    acc[group.status as Status] = group._count._all;
-    return acc;
-  }, {});
-
   const tagsForClient = tags.map((tag) => ({
     id: tag.id,
     name: tag.name,
@@ -110,7 +101,6 @@ export default async function DashboardPage() {
       dueSoon={dueSoon.map(toClientTask)}
       backlog={backlog.map(toClientTask)}
       completed={completedLimited.map(toClientTask)}
-      statusCounts={statusCounts}
       tags={tagsForClient}
     />
   );

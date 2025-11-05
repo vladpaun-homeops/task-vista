@@ -87,7 +87,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
     ? [{ updatedAt: "desc" }, { title: "asc" }]
     : [{ dueDate: "asc" }, { priority: "desc" }, { createdAt: "desc" }];
 
-  const [tasks, tags, statusGroups] = await Promise.all([
+  const [tasks, tags] = await Promise.all([
     prisma.task.findMany({
       where,
       include: { tags: true },
@@ -99,10 +99,6 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
     }) as Promise<
       Array<{ id: string; name: string; color: string; _count: { tasks: number } }>
     >,
-    prisma.task.groupBy({
-      by: ["status"],
-      _count: { _all: true },
-    }),
   ]);
 
   const tasksForClient = tasks.map((task) => ({
@@ -128,16 +124,10 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
     usageCount: tag._count.tasks,
   }));
 
-  const statusCounts = statusGroups.reduce<Partial<Record<StatusType, number>>>((acc, group) => {
-    acc[group.status as StatusType] = group._count._all;
-    return acc;
-  }, {});
-
   return (
     <TasksClient
       tasks={tasksForClient}
       tags={tagsForClient}
-      statusCounts={statusCounts}
     />
   );
 }
