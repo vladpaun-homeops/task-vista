@@ -25,6 +25,7 @@ import { createTagAction } from "@/server/actions/tags";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TagForm } from "@/components/tags/tag-form";
 import type { TaskFormValues } from "@/lib/validations/task";
+import { toast } from "@/components/ui/sonner";
 
 type TasksClientProps = {
   tasks: TaskRow[];
@@ -40,16 +41,63 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
   const [isCreateTagOpen, setIsCreateTagOpen] = React.useState(false);
   const [taskToEdit, setTaskToEdit] = React.useState<TaskRow | null>(null);
   const suppressCreateSyncRef = React.useRef(false);
+  const [taskItems, setTaskItems] = React.useState<TaskRow[]>(tasks);
+  const taskItemsRef = React.useRef(tasks);
+
+  React.useEffect(() => {
+    setTaskItems(tasks);
+    taskItemsRef.current = tasks;
+  }, [tasks]);
+
+  React.useEffect(() => {
+    taskItemsRef.current = taskItems;
+  }, [taskItems]);
+
+  const findTags = React.useCallback(
+    (ids: string[]) =>
+      ids
+        .map((id) => tags.find((tag) => tag.id === id))
+        .filter((tag): tag is TagOption => Boolean(tag)),
+    [tags]
+  );
+
+  const addTask = React.useCallback((task: TaskRow) => {
+    setTaskItems((current) => [task, ...current]);
+  }, []);
+
+  const applyTaskUpdate = React.useCallback(
+    (id: string, updater: (task: TaskRow) => TaskRow | null) => {
+      setTaskItems((current) =>
+        current
+          .map((task) => (task.id === id ? updater(task) : task))
+          .filter((task): task is TaskRow => Boolean(task))
+      );
+    },
+    []
+  );
 
   const activeTasks = React.useMemo(
-    () => tasks.filter((task) => task.status !== Status.DONE),
-    [tasks]
+    () => taskItems.filter((task) => task.status !== Status.DONE),
+    [taskItems]
   );
   const completedTasks = React.useMemo(
-    () => tasks.filter((task) => task.status === Status.DONE),
-    [tasks]
+    () => taskItems.filter((task) => task.status === Status.DONE),
+    [taskItems]
   );
   const shouldShowActiveSection = activeTasks.length > 0 || completedTasks.length === 0;
+
+  const summaryCounts = React.useMemo(() => {
+    const base: Partial<Record<Status, number>> = {
+      [Status.NOT_STARTED]: 0,
+      [Status.IN_PROGRESS]: 0,
+      [Status.OVERDUE]: 0,
+      [Status.DONE]: 0,
+    };
+    for (const task of taskItems) {
+      base[task.status] = (base[task.status] ?? 0) + 1;
+    }
+    return base;
+  }, [taskItems]);
 
   const createParam = searchParams.get("create");
 
@@ -114,38 +162,99 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
 
   const handleCreate = React.useCallback(
     async (values: TaskFormValues) => {
+      const tempId = `temp-${crypto.randomUUID()}`;
+      const now = new Date().toISOString();
+      const optimisticTask: TaskRow = {
+        id: tempId,
+        title: values.title,
+        description: values.description ?? null,
+        dueDate: values.dueDate ? values.dueDate.toISOString() : null,
+        priority: values.priority,
+        status: values.status,
+        createdAt: now,
+        updatedAt: now,
+        tags: findTags(values.tagIds).map((tag) => ({ id: tag.id, name: tag.name, color: tag.color })),
+      };
+
+      addTask(optimisticTask);
+
       const result = await createTaskAction(values);
       if (!result.success) {
+        setTaskItems((current) => current.filter((task) => task.id !== tempId));
+        toast.error("Failed to create task", {
+          description: result.error ?? "Please try again.",
+        });
         return { success: false, error: result.error };
       }
 
-      router.refresh();
+      if (result.data?.id) {
+        setTaskItems((current) =>
+          current.map((task) => (task.id === tempId ? { ...task, id: result.data!.id } : task))
+        );
+      }
+
+      toast.success("Task created");
+      React.startTransition(() => {
+        router.refresh();
+      });
       return { success: true };
     },
-    [router]
+    [addTask, findTags, router]
   );
 
   const handleUpdate = React.useCallback(
     async (values: TaskFormValues & { id: string }) => {
+      const previous = taskItemsRef.current;
+      applyTaskUpdate(values.id, (task) => {
+        const now = new Date().toISOString();
+        return {
+          ...task,
+          title: values.title,
+          description: values.description ?? null,
+          dueDate: values.dueDate ? values.dueDate.toISOString() : null,
+          priority: values.priority,
+          status: values.status,
+          updatedAt: now,
+          tags: findTags(values.tagIds).map((tag) => ({ id: tag.id, name: tag.name, color: tag.color })),
+        };
+      });
+
       const result = await updateTaskAction({ ...values });
       if (!result.success) {
+        setTaskItems(previous);
+        toast.error("Failed to update task", {
+          description: result.error ?? "Please try again.",
+        });
         return { success: false, error: result.error };
       }
 
-      router.refresh();
+      toast.success("Task updated");
+      React.startTransition(() => {
+        router.refresh();
+      });
       return { success: true };
     },
-    [router]
+    [applyTaskUpdate, findTags, router]
   );
 
   const handleDelete = React.useCallback(
     async (task: TaskRow) => {
+      const previous = taskItemsRef.current;
+      setTaskItems((current) => current.filter((item) => item.id !== task.id));
+
       const result = await deleteTaskAction({ id: task.id });
       if (!result.success) {
+        setTaskItems(previous);
+        toast.error("Failed to delete task", {
+          description: result.error ?? "Please try again.",
+        });
         return { success: false, error: result.error };
       }
 
-      router.refresh();
+      toast.success("Task deleted");
+      React.startTransition(() => {
+        router.refresh();
+      });
       return { success: true };
     },
     [router]
@@ -153,38 +262,72 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
 
   const handleStatusChange = React.useCallback(
     async (task: TaskRow, status: Status) => {
+      const previous = taskItemsRef.current;
+      applyTaskUpdate(task.id, (current) => ({
+        ...current,
+        status,
+        updatedAt: new Date().toISOString(),
+      }));
+
       const result = await updateTaskStatusAction({ id: task.id, status });
       if (!result.success) {
+        setTaskItems(previous);
+        toast.error("Failed to update status", {
+          description: result.error ?? "Please try again.",
+        });
         return { success: false, error: result.error };
       }
 
-      router.refresh();
+      toast.success("Status updated");
+      React.startTransition(() => {
+        router.refresh();
+      });
       return { success: true };
     },
-    [router]
+    [applyTaskUpdate, router]
   );
 
   const handlePriorityChange = React.useCallback(
     async (task: TaskRow, priority: Priority) => {
+      const previous = taskItemsRef.current;
+      applyTaskUpdate(task.id, (current) => ({
+        ...current,
+        priority,
+        updatedAt: new Date().toISOString(),
+      }));
+
       const result = await updateTaskPriorityAction({ id: task.id, priority });
       if (!result.success) {
+        setTaskItems(previous);
+        toast.error("Failed to update priority", {
+          description: result.error ?? "Please try again.",
+        });
         return { success: false, error: result.error };
       }
 
-      router.refresh();
+      toast.success("Priority updated");
+      React.startTransition(() => {
+        router.refresh();
+      });
       return { success: true };
     },
-    [router]
+    [applyTaskUpdate, router]
   );
 
   const handleCreateTag = React.useCallback(
     async (values: { name: string; color: string }) => {
       const result = await createTagAction(values);
       if (!result.success) {
+        toast.error("Failed to create tag", {
+          description: result.error ?? "Please try again.",
+        });
         return { success: false, error: result.error };
       }
 
-      router.refresh();
+      toast.success("Tag created");
+      React.startTransition(() => {
+        router.refresh();
+      });
       return { success: true };
     },
     [router]
@@ -214,7 +357,7 @@ export function TasksClient({ tasks, tags, statusCounts }: TasksClientProps) {
 
       <TaskFilters statusOptions={statusOptions} tags={tags} />
 
-      <TaskSummary counts={statusCounts} />
+      <TaskSummary counts={summaryCounts} />
 
       {shouldShowActiveSection && (
         <section className="space-y-3">

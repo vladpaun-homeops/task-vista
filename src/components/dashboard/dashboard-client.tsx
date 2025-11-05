@@ -11,6 +11,8 @@ import { Priority, Status } from "@/generated/prisma/enums";
 import type { TaskFormValues } from "@/lib/validations/task";
 import type { TagOption } from "@/components/tags/tag-multi-select";
 import { taskQuickFilters } from "@/lib/task-quick-filters";
+import { toast } from "@/components/ui/sonner";
+import { addDays } from "date-fns";
 import {
   createTaskAction,
   deleteTaskAction,
@@ -86,77 +88,256 @@ export function DashboardClient({
   const [taskToEdit, setTaskToEdit] = React.useState<DashboardTask | null>(null);
   const [taskToDelete, setTaskToDelete] = React.useState<DashboardTask | null>(null);
 
+  const initialTasks = React.useMemo(
+    () => [...overdue, ...dueSoon, ...backlog, ...completed],
+    [overdue, dueSoon, backlog, completed]
+  );
+
+  const [allTasks, setAllTasks] = React.useState<DashboardTask[]>(initialTasks);
+  const tasksRef = React.useRef(allTasks);
+
+  React.useEffect(() => {
+    setAllTasks(initialTasks);
+  }, [initialTasks]);
+
+  React.useEffect(() => {
+    tasksRef.current = allTasks;
+  }, [allTasks]);
+
+  const partitionTasks = React.useCallback((tasksList: DashboardTask[]) => {
+    const now = new Date();
+    const soon = addDays(now, 7);
+
+    const groups = {
+      overdue: [] as DashboardTask[],
+      dueSoon: [] as DashboardTask[],
+      backlog: [] as DashboardTask[],
+      completed: [] as DashboardTask[],
+    };
+
+    for (const task of tasksList) {
+      if (task.status === Status.DONE) {
+        groups.completed.push(task);
+        continue;
+      }
+
+      if (task.status === Status.OVERDUE) {
+        groups.overdue.push(task);
+        continue;
+      }
+
+      if (task.dueDate) {
+        const due = new Date(task.dueDate);
+        if (due < now) {
+          groups.overdue.push(task);
+          continue;
+        }
+        if (due <= soon) {
+          groups.dueSoon.push(task);
+          continue;
+        }
+      }
+
+      groups.backlog.push(task);
+    }
+
+    return groups;
+  }, []);
+
+  const { overdue: overdueTasks, dueSoon: dueSoonTasks, backlog: backlogTasks, completed: completedTasks } = React.useMemo(
+    () => partitionTasks(allTasks),
+    [allTasks, partitionTasks]
+  );
+
+  const summaryCounts = React.useMemo(() => {
+    const base: Partial<Record<Status, number>> = {
+      [Status.NOT_STARTED]: 0,
+      [Status.IN_PROGRESS]: 0,
+      [Status.OVERDUE]: 0,
+      [Status.DONE]: 0,
+    };
+    for (const task of allTasks) {
+      base[task.status] = (base[task.status] ?? 0) + 1;
+    }
+    return base;
+  }, [allTasks]);
+
+  const findTags = React.useCallback(
+    (ids: string[]) =>
+      ids
+        .map((id) => tags.find((tag) => tag.id === id))
+        .filter((tag): tag is TagOption => Boolean(tag)),
+    [tags]
+  );
+
+  const upsertTask = React.useCallback((task: DashboardTask) => {
+    setAllTasks((current) => {
+      const existingIndex = current.findIndex((item) => item.id === task.id);
+      if (existingIndex === -1) {
+        return [task, ...current];
+      }
+      const next = [...current];
+      next[existingIndex] = task;
+      return next;
+    });
+  }, []);
+
+  const buildTaskFromValues = React.useCallback(
+    (id: string, values: TaskFormValues, base?: DashboardTask): DashboardTask => ({
+      id,
+      title: values.title,
+      description: values.description ?? null,
+      dueDate: values.dueDate ? values.dueDate.toISOString() : null,
+      priority: values.priority,
+      status: values.status,
+      createdAt: base?.createdAt ?? new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      tags: findTags(values.tagIds).map((tag) => ({ id: tag.id, name: tag.name, color: tag.color })),
+    }),
+    [findTags]
+  );
+
+  const removeTask = React.useCallback((id: string) => {
+    setAllTasks((current) => current.filter((task) => task.id !== id));
+  }, []);
+
   const refresh = React.useCallback(() => {
     router.refresh();
   }, [router]);
 
   const handleCreateTask = React.useCallback(
     async (values: TaskFormValues) => {
+      const tempId = `temp-${crypto.randomUUID()}`;
+      const optimisticTask = buildTaskFromValues(tempId, values);
+
+      upsertTask(optimisticTask);
+
       const result = await createTaskAction(values);
       if (!result.success) {
+        removeTask(tempId);
+        toast.error("Failed to create task", {
+          description: result.error ?? "Please try again.",
+        });
         return { success: false, error: result.error };
       }
-      refresh();
+
+      if (result.data?.id) {
+        upsertTask({ ...optimisticTask, id: result.data.id });
+      }
+
+      toast.success("Task created");
+      React.startTransition(() => refresh());
       return { success: true };
     },
-    [refresh]
+    [buildTaskFromValues, refresh, removeTask, upsertTask]
   );
 
   const handleUpdateTask = React.useCallback(
     async (values: TaskFormValues & { id: string }) => {
+      const previous = tasksRef.current;
+      const existing = previous.find((task) => task.id === values.id);
+      const optimistic = buildTaskFromValues(values.id, values, existing);
+      upsertTask(optimistic);
+
       const result = await updateTaskAction({ ...values });
       if (!result.success) {
+        setAllTasks(previous);
+        toast.error("Failed to update task", {
+          description: result.error ?? "Please try again.",
+        });
         return { success: false, error: result.error };
       }
-      refresh();
+
+      toast.success("Task updated");
+      React.startTransition(() => refresh());
       return { success: true };
     },
-    [refresh]
+    [buildTaskFromValues, refresh, upsertTask]
   );
 
   const handleDeleteTask = React.useCallback(
     async (task: DashboardTask) => {
+      const previous = tasksRef.current;
+      removeTask(task.id);
+
       const result = await deleteTaskAction({ id: task.id });
       if (!result.success) {
+        setAllTasks(previous);
+        toast.error("Failed to delete task", {
+          description: result.error ?? "Please try again.",
+        });
         return { success: false, error: result.error };
       }
-      refresh();
+
+      toast.success("Task deleted");
+      React.startTransition(() => refresh());
       return { success: true };
     },
-    [refresh]
+    [refresh, removeTask]
   );
 
   const handleStatusChange = React.useCallback(
     async (task: DashboardTask, status: Status) => {
+      const previous = tasksRef.current;
+      upsertTask({
+        ...task,
+        status,
+        updatedAt: new Date().toISOString(),
+      });
+
       const result = await updateTaskStatusAction({ id: task.id, status });
       if (!result.success) {
+        setAllTasks(previous);
+        toast.error("Failed to update status", {
+          description: result.error ?? "Please try again.",
+        });
         return { success: false, error: result.error };
       }
-      refresh();
+
+      toast.success("Status updated");
+      React.startTransition(() => refresh());
       return { success: true };
     },
-    [refresh]
+    [refresh, upsertTask]
   );
 
   const handlePriorityChange = React.useCallback(
     async (task: DashboardTask, priority: Priority) => {
+      const previous = tasksRef.current;
+      upsertTask({
+        ...task,
+        priority,
+        updatedAt: new Date().toISOString(),
+      });
+
       const result = await updateTaskPriorityAction({ id: task.id, priority });
       if (!result.success) {
+        setAllTasks(previous);
+        toast.error("Failed to update priority", {
+          description: result.error ?? "Please try again.",
+        });
         return { success: false, error: result.error };
       }
-      refresh();
+
+      toast.success("Priority updated");
+      React.startTransition(() => refresh());
       return { success: true };
     },
-    [refresh]
+    [refresh, upsertTask]
   );
 
   const handleCreateTag = React.useCallback(
     async (values: { name: string; color: string }) => {
       const result = await createTagAction(values);
       if (!result.success) {
+        toast.error("Failed to create tag", {
+          description: result.error ?? "Please try again.",
+        });
         return { success: false, error: result.error };
       }
-      refresh();
+
+      toast.success("Tag created");
+      React.startTransition(() => refresh());
       return { success: true };
     },
     [refresh]
@@ -211,9 +392,9 @@ export function DashboardClient({
         </div>
       </section>
 
-      <TaskSummary counts={statusCounts} />
+      <TaskSummary counts={summaryCounts} />
 
-      {overdue.length > 0 && (
+      {overdueTasks.length > 0 && (
         <section className="space-y-3">
           <SectionHeader
             title="Overdue"
@@ -221,7 +402,7 @@ export function DashboardClient({
             tone="danger"
           />
           <TaskList
-            tasks={overdue}
+            tasks={overdueTasks}
             highlight="overdue"
             onComplete={actions.onComplete}
             onEdit={actions.onEdit}
@@ -239,7 +420,7 @@ export function DashboardClient({
           tone="warning"
         />
         <TaskList
-          tasks={dueSoon}
+          tasks={dueSoonTasks}
           highlight="soon"
           emptyMessage="Nothing due this week."
           onComplete={actions.onComplete}
@@ -256,7 +437,7 @@ export function DashboardClient({
           description="Everything else still on your plate."
         />
         <TaskList
-          tasks={backlog}
+          tasks={backlogTasks}
           emptyMessage="All caught up!"
           onComplete={actions.onComplete}
           onEdit={actions.onEdit}
@@ -266,13 +447,13 @@ export function DashboardClient({
         />
       </section>
 
-      {completed.length > 0 && (
+      {completedTasks.length > 0 && (
         <section className="space-y-3">
           <SectionHeader
             title="Recently completed"
             description="A quick glance at finished work."
           />
-          <TaskList tasks={completed} emptyMessage="" />
+          <TaskList tasks={completedTasks} emptyMessage="" />
         </section>
       )}
 
