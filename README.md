@@ -1,103 +1,81 @@
 # 🧠 To-Do App (Next.js + FastAPI + PostgreSQL)
 
-This repository contains a simple **To-Do web application** built with **Next.js** and **Prisma ORM**, connected to a **PostgreSQL** database and a placeholder **FastAPI ML service**.  
-It is developed as a foundation project for the **Junction 2025 hackathon**.
+This repository contains a **Next.js** web UI backed by **Prisma** and **PostgreSQL**, plus a small **FastAPI** microservice that tags to-do items. It currently serves as a foundation project for the **Junction 2025 hackathon**.
 
 ---
 
-## 🚀 Development Setup
+## 🚀 Quickstart
 
-### Requirements
-- **Docker** and **Docker Compose** must be installed.
-
-### Run the development environment
-
-Start the entire stack:
-```bash
-docker compose up
-```
-
-Run in detached mode (background):
-```bash
-docker compose up -d
-```
-
-Stop and remove all containers:
-```bash
-docker compose down
-```
+1. **Install prerequisites**
+   - Docker Desktop / Docker Engine (for Postgres).
+   - Node.js 18.18+ (Next.js 16 requirement). With nvm: `nvm install 24 && nvm use 24`.
+   - Corepack (bundled with Node.js; run `corepack enable` once if it’s disabled).
+   - Python 3.11 (for FastAPI). On macOS/Linux it’s usually `python3`; Windows users can install via the Microsoft Store or `pyenv`.
+   - `make` (ships on macOS/Linux; on Windows use WSL, Git Bash, or install with `choco install make`).
+2. Clone the repository and copy the environment template:
+   ```bash
+   git clone <your-fork-url>
+   cd todoapp-nextjs-ai
+   cp .env.example .env.local
+   ```
+3. Start everything with a single command:
+   ```bash
+   make dev
+   ```
+   Visit the app at [http://localhost:3000](http://localhost:3000). The FastAPI service is available at [http://localhost:8000/health](http://localhost:8000/health).
 
 ---
 
-## 🐳 Docker Compose Overview
+## 🛠 How the Dev Workflow Works
 
-Running `docker compose up` orchestrates a **three-service development stack**, defined in `docker-compose.yml`.  
-Each service runs in its own isolated container but shares a common network for internal communication (`db`, `ml`, and `web`).
+`make dev` calls `scripts/dev.sh`, which orchestrates the full developer loop:
 
-### 1. Database Service (`db`)
-- Uses the official **PostgreSQL 16** image.  
-- Initializes a database named `appdb` with credentials (`postgres` / `postgres`).  
-- Persists data in a **named Docker volume** `pgdata`, ensuring data survives container restarts.  
-- Includes a **health check** (`pg_isready`) that ensures the database is ready before dependent services start.
+- Verifies you are running a compatible Node.js (18.18+).
+- Uses Corepack to activate `pnpm@10.20.0`, installs Node dependencies, and builds the Prisma client.
+- Brings up the Postgres container defined in `compose.yml`.
+- Applies migrations and seeds via Prisma.
+- Creates/updates a project-local virtualenv at `.venv/` and installs FastAPI dependencies from `ml/requirements.txt`.
+- Runs the FastAPI server (`uvicorn`) and the Next.js dev server side-by-side. Hit `Ctrl+C` to shut down the web/ML servers *and* the Postgres container.
 
-### 2. Machine Learning Service (`ml`)
-- Built from the local `./ml` directory using `Dockerfile.ml`.  
-- Runs a placeholder process (`tail -f /dev/null`), ready to host a **FastAPI ML API**.  
-- Exposes **port 8000** on the host (`http://localhost:8000`).  
-- Mounts the `ml` directory as a bind volume for live code editing.
-
-### 3. Web Service (`web`)
-- Built from the root context using `Dockerfile.web`.  
-- Hosts the **Next.js frontend** and **Prisma ORM** backend logic.  
-- Depends on:
-  - `db` being healthy  
-  - `ml` being started  
-- Executes the following startup sequence:
-  1. Enables **pnpm** via Corepack  
-  2. Installs dependencies  
-  3. Runs `prisma generate`, `migrate deploy`, and `db seed`  
-  4. Starts the Next.js dev server on port **3000**  
-- Exposes:
-  - **Port 3000** → Next.js app (`http://localhost:3000`)  
-  - **Port 5555** → Prisma Studio (`http://localhost:5555`)  
-- Mounts the entire project directory into `/app` for hot reloads.
-
-### 4. Volumes
-- `pgdata` → Named Docker volume storing PostgreSQL data at `/var/lib/postgresql/data`.
+On macOS/Linux, `make` is preinstalled. Windows users can run the same workflow from WSL or install GNU Make through tools such as [Git for Windows](https://gitforwindows.org/) or `choco install make`.
 
 ---
 
-## 🧩 Prisma Studio
+## 🧩 Supporting Commands
 
-Prisma Studio is a web-based interface for viewing and modifying your database.
+- `make db-up` / `make db-down` — manually start or stop just the Postgres container.
+- `pnpm run prepare` — regenerate the Prisma client.
+- `pnpm exec prisma studio` — open Prisma Studio at [http://localhost:5555](http://localhost:5555).
+- `docker compose down` — remove the Postgres container and its network.
 
-To open Prisma Studio, run:
-```bash
-docker compose exec web pnpm exec prisma studio
+The only Docker dependency left is Postgres; both Next.js and FastAPI run natively on your host machine.
+
+---
+
+## 🔐 Environment Variables
+
+Local configuration lives in `.env.local`. Start from `.env.example`, which provides sensible defaults:
+
 ```
-Then visit: [http://localhost:5555](http://localhost:5555)
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/appdb?schema=public
+ML_URL=http://localhost:8000
+```
 
----
-
-## ☁️ Deployment
-
-The simplest way to deploy this app is through **Vercel**, the official platform by the creators of Next.js.
-
-See the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for details.
+Next.js automatically loads `.env.local`. Restart `make dev` after changing database settings.
 
 ---
 
 ## 🧰 Stack Summary
 
 | Component | Technology |
-|------------|-------------|
-| Frontend | Next.js 15 (React) |
+|-----------|------------|
+| Frontend | Next.js 16 (React 19) |
 | ORM | Prisma |
-| Database | PostgreSQL 16 |
-| ML API | FastAPI (placeholder) |
-| Package Manager | pnpm |
-| Containerization | Docker Compose |
+| Database | PostgreSQL 16 (via Docker Compose) |
+| ML API | FastAPI (Python 3.11) |
+| Package Manager | pnpm 10 (via Corepack) |
 
+---
 
 ## 📌 Outstanding Work
 

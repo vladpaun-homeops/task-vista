@@ -4,10 +4,16 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:web": "next dev --turbopack",
+    "dev:ml": "python -m uvicorn ml.main:app --reload --host 0.0.0.0 --port 8000",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "prepare": "prisma generate",
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint"
   },
+  "packageManager": "pnpm@10.20.0",
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@prisma/client": "^6.18.0",
@@ -40,7 +46,6 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3",
     "@next/eslint-plugin-next": "^16.0.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
@@ -48,7 +53,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.0.1",
-    "eslint-plugin-react-hooks": "^7.0.1",
     "prisma": "^6.18.0",
     "tailwindcss": "^4",
     "tsx": "^4.20.6",
