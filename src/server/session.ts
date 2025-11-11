@@ -117,6 +117,15 @@ const seedInitialData = async (sessionId: string) => {
   });
 };
 
+const ensureSeededSession = async (session: Session) => {
+  if (session.seededAt) {
+    return session;
+  }
+
+  await seedInitialData(session.id);
+  return prisma.session.findUniqueOrThrow({ where: { id: session.id } });
+};
+
 async function internalGetOrCreateSession(): Promise<Session> {
   const cookieStore = await cookies();
   const headerStore = await headers();
@@ -124,11 +133,13 @@ async function internalGetOrCreateSession(): Promise<Session> {
   const pendingHeaderValue = headerStore.get(SESSION_HEADER_NAME) ?? undefined;
 
   const ensureSession = async (sessionId: string) => {
-    return prisma.session.upsert({
+    const session = await prisma.session.upsert({
       where: { id: sessionId },
       update: {},
       create: { id: sessionId },
     });
+
+    return ensureSeededSession(session);
   };
 
   if (cookieValue) {
@@ -140,8 +151,7 @@ async function internalGetOrCreateSession(): Promise<Session> {
   }
 
   const session = await prisma.session.create({ data: {} });
-  await seedInitialData(session.id);
-  return session;
+  return ensureSeededSession(session);
 }
 
 export const getOrCreateSession = cache(async () => internalGetOrCreateSession());

@@ -105,7 +105,7 @@ docker run -d --name taskvista \
   ghcr.io/vladpaun-homeops/task-vista:main
 ```
 
-The runtime image copies `.next/standalone`, `.next/static`, and the pruned production `node_modules`; no build toolchain ships to production.
+The runtime image copies `.next/standalone`, `.next/static`, `prisma/`, and the pruned production `node_modules`. On startup the container now runs `npx prisma migrate deploy` (and fails fast if `DATABASE_URL` is missing) before launching `node server.js`, so migrations stay current without extra infrastructure hooks.
 
 ---
 
