@@ -1,16 +1,15 @@
 'use client';
 
 import * as React from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Tag as TagIcon } from "lucide-react";
 
 import { Priority, Status } from "@/generated/prisma/enums";
 import { statusOptions } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TaskFilters } from "@/components/tasks/task-filters";
-import { TaskForm } from "@/components/tasks/task-form";
+import { TaskEditor } from "@/components/tasks/task-editor";
 import { TaskSummary } from "@/components/tasks/task-summary";
 import { TaskTable, type TaskRow } from "@/components/tasks/task-table";
 import type { TagOption } from "@/components/tags/tag-multi-select";
@@ -22,7 +21,13 @@ import {
   updateTaskStatusAction,
 } from "@/server/actions/tasks";
 import { createTagAction } from "@/server/actions/tags";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { TagForm } from "@/components/tags/tag-form";
 import type { TaskFormValues } from "@/lib/validations/task";
 import { toast } from "@/components/ui/sonner";
@@ -34,12 +39,10 @@ type TasksClientProps = {
 
 export function TasksClient({ tasks, tags }: TasksClientProps) {
   const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
   const [isCreateTagOpen, setIsCreateTagOpen] = React.useState(false);
   const [taskToEdit, setTaskToEdit] = React.useState<TaskRow | null>(null);
-  const suppressCreateSyncRef = React.useRef(false);
   const [taskItems, setTaskItems] = React.useState<TaskRow[]>(tasks);
   const taskItemsRef = React.useRef(tasks);
   const [selectedTaskIds, setSelectedTaskIds] = React.useState<Set<string>>(new Set());
@@ -151,66 +154,34 @@ export function TasksClient({ tasks, tags }: TasksClientProps) {
     [taskItems, selectedTaskIds]
   );
 
-  const createParam = searchParams.get("create");
+  React.useEffect(() => {
+    if (!searchParams) {
+      return;
+    }
 
-  const updateCreateQuery = React.useCallback(
-    (shouldOpen: boolean) => {
-      if (!pathname) {
-        return;
-      }
+    const shouldOpen = searchParams.get("create") === "1";
+    if (!shouldOpen) {
+      return;
+    }
 
-      const nextParams = new URLSearchParams(searchParams.toString());
-      if (shouldOpen) {
-        nextParams.set("create", "1");
-      } else {
-        nextParams.delete("create");
-      }
+    setIsCreateOpen(true);
 
-      const query = nextParams.toString();
-      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-    },
-    [pathname, router, searchParams]
-  );
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("create");
+      window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+    } else {
+      router.replace("/tasks", { scroll: false });
+    }
+  }, [router, searchParams]);
 
   const handleOpenCreate = React.useCallback(() => {
     setIsCreateOpen(true);
-    suppressCreateSyncRef.current = false;
-    updateCreateQuery(true);
-  }, [updateCreateQuery]);
+  }, []);
 
-  React.useEffect(() => {
-    if (createParam && !isCreateOpen) {
-      if (suppressCreateSyncRef.current) {
-        return;
-      }
-      setIsCreateOpen(true);
-      return;
-    }
-
-    if (!createParam && suppressCreateSyncRef.current) {
-      suppressCreateSyncRef.current = false;
-      return;
-    }
-
-    if (!createParam && isCreateOpen) {
-      setIsCreateOpen(false);
-    }
-  }, [createParam, isCreateOpen]);
-
-  const handleCreateOpenChange = React.useCallback(
-    (open: boolean) => {
-      setIsCreateOpen(open);
-      if (open) {
-        suppressCreateSyncRef.current = false;
-        updateCreateQuery(true);
-        return;
-      }
-
-      suppressCreateSyncRef.current = true;
-      updateCreateQuery(false);
-    },
-    [updateCreateQuery]
-  );
+  const handleCreateOpenChange = React.useCallback((open: boolean) => {
+    setIsCreateOpen(open);
+  }, []);
 
   const handleCreate = React.useCallback(
     async (values: TaskFormValues) => {
@@ -576,44 +547,46 @@ export function TasksClient({ tasks, tags }: TasksClientProps) {
         </section>
       )}
 
-      <Sheet open={isCreateOpen} onOpenChange={handleCreateOpenChange}>
-        <SheetContent className="w-full gap-0 p-0 sm:max-w-lg">
-          <SheetHeader className="px-6 pt-6">
-            <SheetTitle>Create task</SheetTitle>
-            <SheetDescription>
-              Set the basics now—you can always refine it later.
-            </SheetDescription>
-          </SheetHeader>
-          <ScrollArea className="h-full">
-            <div className="px-6 pb-8 pt-2">
-              <TaskForm
+      <Dialog open={isCreateOpen} onOpenChange={handleCreateOpenChange}>
+        <DialogContent className="max-w-lg gap-0 p-0">
+          <div className="border-b px-6 py-6">
+            <DialogHeader className="space-y-2 text-left">
+              <DialogTitle>Create task</DialogTitle>
+              <DialogDescription>
+                Set the basics now—you can always refine it later.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <ScrollArea className="max-h-[70vh]">
+            <div className="px-6 pb-8 pt-4">
+              <TaskEditor
                 tags={tags}
                 submitLabel="Create task"
                 onSubmit={handleCreate}
-                onSuccess={() => {
-                  handleCreateOpenChange(false);
-                }}
+                onSuccess={() => handleCreateOpenChange(false)}
               />
             </div>
           </ScrollArea>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
-      <Sheet open={!!taskToEdit} onOpenChange={(open) => !open && setTaskToEdit(null)}>
-        <SheetContent className="w-full gap-0 p-0 sm:max-w-lg">
-          <SheetHeader className="px-6 pt-6">
-            <SheetTitle>Edit task</SheetTitle>
-            <SheetDescription>
-              Update details, due date, status, or tags.
-            </SheetDescription>
-          </SheetHeader>
-          <ScrollArea className="h-full">
-            <div className="px-6 pb-8 pt-2">
+      <Dialog open={!!taskToEdit} onOpenChange={(open) => !open && setTaskToEdit(null)}>
+        <DialogContent className="max-w-lg gap-0 p-0">
+          <div className="border-b px-6 py-6">
+            <DialogHeader className="space-y-2 text-left">
+              <DialogTitle>Edit task</DialogTitle>
+              <DialogDescription>
+                Update details, due date, status, or tags.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <ScrollArea className="max-h-[70vh]">
+            <div className="px-6 pb-8 pt-4">
               {taskToEdit && (
-                <TaskForm
+                <TaskEditor
                   tags={tags}
                   submitLabel="Save changes"
-                  defaultValues={{
+                  initialValues={{
                     title: taskToEdit.title,
                     description: taskToEdit.description ?? "",
                     dueDate: taskToEdit.dueDate ? new Date(taskToEdit.dueDate) : null,
@@ -627,15 +600,13 @@ export function TasksClient({ tasks, tags }: TasksClientProps) {
                       id: taskToEdit.id,
                     })
                   }
-                  onSuccess={() => {
-                    setTaskToEdit(null);
-                  }}
+                  onSuccess={() => setTaskToEdit(null)}
                 />
               )}
             </div>
           </ScrollArea>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isCreateTagOpen} onOpenChange={setIsCreateTagOpen}>
         <DialogContent>

@@ -1,8 +1,11 @@
 import { CalendarBoard, type CalendarBoardTask } from "@/components/tasks/calendar-board";
 import { prisma } from "@/server/db";
+import { getSessionId } from "@/server/session";
 
 export default async function CalendarPage() {
+  const sessionId = await getSessionId();
   const tasks = await prisma.task.findMany({
+    where: { sessionId },
     include: { tags: true },
     orderBy: [{ dueDate: "asc" }, { updatedAt: "desc" }],
   });

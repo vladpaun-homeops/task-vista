@@ -3,11 +3,13 @@
 dev:
 	./scripts/dev.sh
 
+COMPOSE_FILE := docker-compose.yml
+
 db-up:
-	docker compose up -d db
+	docker compose -f $(COMPOSE_FILE) up -d db
 
 db-down:
-	docker compose down
+	docker compose -f $(COMPOSE_FILE) down
 
 prisma:
 	pnpm run prepare

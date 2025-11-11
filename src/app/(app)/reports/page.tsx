@@ -8,20 +8,26 @@ import { TaskStatusBadge } from "@/components/tasks/task-status-badge";
 import { TaskPriorityBadge } from "@/components/tasks/task-priority-badge";
 import type { Priority, Status } from "@/generated/prisma/enums";
 import { prisma } from "@/server/db";
+import { getSessionId } from "@/server/session";
 
 export default async function ReportsPage() {
+  const sessionId = await getSessionId();
   const thirtyDaysAgo = addDays(new Date(), -30);
 
   const [statusGroups, priorityGroups, tags, completed, overdue] = await Promise.all([
-    prisma.task.groupBy({ by: ["status"], _count: { _all: true } }),
-    prisma.task.groupBy({ by: ["priority"], _count: { _all: true } }),
-    prisma.tag.findMany({ include: { _count: { select: { tasks: true } } }, orderBy: { name: "asc" } }),
+    prisma.task.groupBy({ by: ["status"], where: { sessionId }, _count: { _all: true } }),
+    prisma.task.groupBy({ by: ["priority"], where: { sessionId }, _count: { _all: true } }),
+    prisma.tag.findMany({
+      where: { sessionId },
+      include: { _count: { select: { tasks: true } } },
+      orderBy: { name: "asc" },
+    }),
     prisma.task.findMany({
-      where: { status: "DONE", updatedAt: { gte: thirtyDaysAgo } },
+      where: { sessionId, status: "DONE", updatedAt: { gte: thirtyDaysAgo } },
       orderBy: { updatedAt: "desc" },
     }),
     prisma.task.findMany({
-      where: { status: { not: "DONE" }, dueDate: { lt: new Date() } },
+      where: { sessionId, status: { not: "DONE" }, dueDate: { lt: new Date() } },
     }),
   ]);
 

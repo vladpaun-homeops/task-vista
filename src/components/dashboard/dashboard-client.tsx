@@ -22,13 +22,6 @@ import {
 } from "@/server/actions/tasks";
 import { createTagAction } from "@/server/actions/tags";
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
@@ -48,7 +41,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { TaskForm } from "@/components/tasks/task-form";
+import { TaskEditor } from "@/components/tasks/task-editor";
 import { TaskList } from "@/components/tasks/task-list";
 import { TagForm } from "@/components/tags/tag-form";
 import { TaskSummary } from "@/components/tasks/task-summary";
@@ -455,15 +448,17 @@ export function DashboardClient({
         </section>
       )}
 
-      <Sheet open={isCreateTaskOpen} onOpenChange={setIsCreateTaskOpen}>
-        <SheetContent className="w-full gap-0 p-0 sm:max-w-lg">
-          <SheetHeader className="px-6 pt-6">
-            <SheetTitle>Create task</SheetTitle>
-            <SheetDescription>Capture a new task for your queue.</SheetDescription>
-          </SheetHeader>
-          <ScrollArea className="h-full">
-            <div className="px-6 pb-8 pt-2">
-              <TaskForm
+      <Dialog open={isCreateTaskOpen} onOpenChange={setIsCreateTaskOpen}>
+        <DialogContent className="max-w-lg gap-0 p-0">
+          <div className="border-b px-6 py-6">
+            <DialogHeader className="space-y-2 text-left">
+              <DialogTitle>Create task</DialogTitle>
+              <DialogDescription>Capture a new task for your queue.</DialogDescription>
+            </DialogHeader>
+          </div>
+          <ScrollArea className="max-h-[70vh]">
+            <div className="px-6 pb-8 pt-4">
+              <TaskEditor
                 tags={tags}
                 onSubmit={handleCreateTask}
                 submitLabel="Create task"
@@ -471,22 +466,24 @@ export function DashboardClient({
               />
             </div>
           </ScrollArea>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
-      <Sheet open={!!taskToEdit} onOpenChange={(open) => !open && setTaskToEdit(null)}>
-        <SheetContent className="w-full gap-0 p-0 sm:max-w-lg">
-          <SheetHeader className="px-6 pt-6">
-            <SheetTitle>Edit task</SheetTitle>
-            <SheetDescription>Adjust details, status, or tags.</SheetDescription>
-          </SheetHeader>
-          <ScrollArea className="h-full">
-            <div className="px-6 pb-8 pt-2">
+      <Dialog open={!!taskToEdit} onOpenChange={(open) => !open && setTaskToEdit(null)}>
+        <DialogContent className="max-w-lg gap-0 p-0">
+          <div className="border-b px-6 py-6">
+            <DialogHeader className="space-y-2 text-left">
+              <DialogTitle>Edit task</DialogTitle>
+              <DialogDescription>Adjust details, status, or tags.</DialogDescription>
+            </DialogHeader>
+          </div>
+          <ScrollArea className="max-h-[70vh]">
+            <div className="px-6 pb-8 pt-4">
               {taskToEdit && (
-                <TaskForm
+                <TaskEditor
                   tags={tags}
                   submitLabel="Save changes"
-                  defaultValues={{
+                  initialValues={{
                     title: taskToEdit.title,
                     description: taskToEdit.description ?? "",
                     dueDate: taskToEdit.dueDate ? new Date(taskToEdit.dueDate) : null,
@@ -505,8 +502,8 @@ export function DashboardClient({
               )}
             </div>
           </ScrollArea>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!taskToDelete} onOpenChange={(open) => !open && setTaskToDelete(null)}>
         <AlertDialogContent>

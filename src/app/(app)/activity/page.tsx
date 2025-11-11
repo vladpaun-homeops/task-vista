@@ -8,10 +8,13 @@ import { TaskTagPill } from "@/components/tasks/task-tag-pill";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/server/db";
 import { Status } from "@/generated/prisma/enums";
+import { getSessionId } from "@/server/session";
 import { TaskSummary } from "@/components/tasks/task-summary";
 
 export default async function ActivityPage() {
+  const sessionId = await getSessionId();
   const tasks = await prisma.task.findMany({
+    where: { sessionId },
     include: { tags: true },
     orderBy: [{ updatedAt: "desc" }],
     take: 30,

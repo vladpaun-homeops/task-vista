@@ -31,7 +31,7 @@ This repository contains a **Next.js** web UI backed by **Prisma** and **Postgre
 
 - Verifies you are running a compatible Node.js (18.18+).
 - Uses Corepack to activate `pnpm@10.20.0`, installs Node dependencies, and builds the Prisma client.
-- Brings up the Postgres container defined in `compose.yml`.
+- Brings up the Postgres container defined in `docker-compose.dev.yml`.
 - Applies migrations and seeds via Prisma.
 - Runs the Next.js dev server locally. Hit `Ctrl+C` to shut down the web server *and* the Postgres container.
 
@@ -44,7 +44,7 @@ On macOS/Linux, `make` is preinstalled. Windows users can run the same workflow 
 - `make db-up` / `make db-down` — manually start or stop just the Postgres container.
 - `pnpm run prepare` — regenerate the Prisma client.
 - `pnpm exec prisma studio` — open Prisma Studio at [http://localhost:5555](http://localhost:5555).
-- `docker compose down` — remove the Postgres container and its network.
+- `docker compose -f docker-compose.dev.yml down` — remove the Postgres container and its network.
 
 The only Docker dependency is Postgres; Next.js runs natively on your host machine.
 

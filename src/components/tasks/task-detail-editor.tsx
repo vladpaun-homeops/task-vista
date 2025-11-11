@@ -4,7 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 
 import type { TaskFormValues } from "@/lib/validations/task";
-import { TaskForm } from "@/components/tasks/task-form";
+import { TaskEditor } from "@/components/tasks/task-editor";
 import type { TagOption } from "@/components/tags/tag-multi-select";
 import { updateTaskAction, deleteTaskAction } from "@/server/actions/tasks";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,10 +62,10 @@ export function TaskDetailEditor({ task, tags }: TaskDetailEditorProps) {
         <CardDescription>Adjust details, status, and tags.</CardDescription>
       </CardHeader>
       <CardContent>
-        <TaskForm
+        <TaskEditor
           tags={tags}
           submitLabel="Save changes"
-          defaultValues={{
+          initialValues={{
             title: task.title,
             description: task.description ?? "",
             dueDate: task.dueDate ? new Date(task.dueDate) : null,

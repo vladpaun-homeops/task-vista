@@ -5,6 +5,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COREPACK_HOME="${ROOT_DIR}/.corepack"
 PNPM_VERSION="pnpm@10.20.0"
+CUSTOM_COMPOSE_FILE="${ROOT_DIR}/docker-compose.yml"
 CLEANED_UP=0
 DB_STARTED=0
 
@@ -50,7 +51,7 @@ cleanup() {
   fi
   if [[ "${DB_STARTED}" -eq 1 ]]; then
     info "Stopping Postgres container..."
-    docker compose down >/dev/null 2>&1 || true
+    docker compose -f "${CUSTOM_COMPOSE_FILE}" down >/dev/null 2>&1 || true
   fi
   exit "${exit_code}"
 }
@@ -97,7 +98,7 @@ info "Generating Prisma client..."
 pnpm run prepare
 
 info "Starting Postgres via Docker Compose..."
-docker compose up -d db
+docker compose -f "${CUSTOM_COMPOSE_FILE}" up -d db
 DB_STARTED=1
 
 info "Running database migrations and seed..."
