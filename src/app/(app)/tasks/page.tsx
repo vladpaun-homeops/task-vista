@@ -2,7 +2,6 @@ import { addDays } from "date-fns";
 
 import { Prisma } from "@/generated/prisma/client";
 import { Status } from "@/generated/prisma/enums";
-import type { Status as StatusType } from "@/generated/prisma/enums";
 
 import { TasksClient } from "@/components/tasks/tasks-client";
 import { prisma } from "@/server/db";
