@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Session"
+  ADD COLUMN "tagCreateCount" INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN "tagUpdateCount" INTEGER NOT NULL DEFAULT 0;

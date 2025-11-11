@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +7,7 @@ import { TaskPriorityBadge } from "@/components/tasks/task-priority-badge";
 import { TaskStatusBadge } from "@/components/tasks/task-status-badge";
 import { TaskDetailEditor } from "@/components/tasks/task-detail-editor";
 import { prisma } from "@/server/db";
+import { getSessionId } from "@/server/session";
 
 type TaskDetailPageProps = {
   params: {
@@ -13,9 +15,15 @@ type TaskDetailPageProps = {
   };
 };
 
+export const metadata: Metadata = {
+  title: "Task details",
+  description: "Inspect and edit a single TaskVista task.",
+};
+
 export default async function TaskDetailPage({ params }: TaskDetailPageProps) {
-  const task = await prisma.task.findUnique({
-    where: { id: params.taskId },
+  const sessionId = await getSessionId();
+  const task = await prisma.task.findFirst({
+    where: { id: params.taskId, sessionId },
     include: { tags: true },
   });
 
@@ -24,6 +32,7 @@ export default async function TaskDetailPage({ params }: TaskDetailPageProps) {
   }
 
   const tags = await prisma.tag.findMany({
+    where: { sessionId },
     orderBy: { name: "asc" },
   });
 

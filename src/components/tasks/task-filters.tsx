@@ -48,6 +48,7 @@ export function TaskFilters({ statusOptions, tags }: TaskFiltersProps) {
   const updateQuery = React.useCallback(
     (next: Record<string, string | null | undefined>) => {
       const params = new URLSearchParams(searchParams.toString());
+      const before = params.toString();
 
       Object.entries(next).forEach(([key, value]) => {
         if (!value) {
@@ -57,7 +58,13 @@ export function TaskFilters({ statusOptions, tags }: TaskFiltersProps) {
         }
       });
 
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      const after = params.toString();
+      if (after === before) {
+        return;
+      }
+
+      const target = after ? `${pathname}?${after}` : pathname ?? "";
+      router.replace(target, { scroll: false });
     },
     [pathname, router, searchParams]
   );

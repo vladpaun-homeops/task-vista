@@ -15,31 +15,54 @@ datasource db {
 }
 
 
+model Session {
+  id               String   @id @default(cuid())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  seededAt         DateTime?
+  taskCreateCount  Int      @default(0)
+  taskUpdateCount  Int      @default(0)
+  tagCreateCount   Int      @default(0)
+  tagUpdateCount   Int      @default(0)
+
+  tasks Task[]
+  tags  Tag[]
+}
+
 model Task {
-  id            String        @id @default(cuid())
+  id            String   @id @default(cuid())
 
   title         String
   description   String?
 
   dueDate       DateTime?
-  priority      Priority      @default(LOW)
-  status        Status        @default(NOT_STARTED)
+  priority      Priority @default(LOW)
+  status        Status   @default(NOT_STARTED)
 
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessionId     String
+  session       Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   tags          Tag[]
 
   @@index([title, status, priority, dueDate])
+  @@index([sessionId])
 }
 
 model Tag {
-  id            String        @id @default(cuid())
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @db.Char(7) @default("#202020")
 
-  name          String        @unique
-  color         String        @db.Char(7) @default("#202020")
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
-  tasks         Task[]
+  tasks     Task[]
+
+  @@unique([sessionId, name])
+  @@index([sessionId])
 }
 
 enum Status {

@@ -5,6 +5,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COREPACK_HOME="${ROOT_DIR}/.corepack"
 PNPM_VERSION="pnpm@10.20.0"
+CUSTOM_COMPOSE_FILE="${ROOT_DIR}/docker-compose.yml"
 CLEANED_UP=0
 DB_STARTED=0
 
@@ -15,16 +16,6 @@ info() {
 fail() {
   printf "\033[1;31m[dev]\033[0m %s\n" "$*" >&2
   exit 1
-}
-
-detect_python() {
-  if [[ -x "${ROOT_DIR}/.venv/bin/python" ]]; then
-    printf "%s/.venv/bin/python" "$ROOT_DIR"
-  elif [[ -x "${ROOT_DIR}/.venv/Scripts/python.exe" ]]; then
-    printf "%s/.venv/Scripts/python.exe" "$ROOT_DIR"
-  else
-    printf ""
-  fi
 }
 
 ensure_prisma_output_writable() {
@@ -58,12 +49,9 @@ cleanup() {
   if [[ -n "${WEB_PID:-}" ]] && ps -p "${WEB_PID}" >/dev/null 2>&1; then
     kill "${WEB_PID}" >/dev/null 2>&1 || true
   fi
-  if [[ -n "${ML_PID:-}" ]] && ps -p "${ML_PID}" >/dev/null 2>&1; then
-    kill "${ML_PID}" >/dev/null 2>&1 || true
-  fi
   if [[ "${DB_STARTED}" -eq 1 ]]; then
     info "Stopping Postgres container..."
-    docker compose down >/dev/null 2>&1 || true
+    docker compose -f "${CUSTOM_COMPOSE_FILE}" down >/dev/null 2>&1 || true
   fi
   exit "${exit_code}"
 }
@@ -110,7 +98,7 @@ info "Generating Prisma client..."
 pnpm run prepare
 
 info "Starting Postgres via Docker Compose..."
-docker compose up -d db
+docker compose -f "${CUSTOM_COMPOSE_FILE}" up -d db
 DB_STARTED=1
 
 info "Running database migrations and seed..."
@@ -119,32 +107,9 @@ if ! pnpm run db:seed; then
   info "Prisma seed failed (often harmless the first time if data already exists). Review the output above if this is unexpected."
 fi
 
-SYSTEM_PYTHON="$(command -v python || command -v python3 || true)"
-if [[ -z "${SYSTEM_PYTHON}" ]]; then
-  fail "Python 3.11 is required. Install it (e.g., via your OS package manager or pyenv) and rerun."
-fi
-
-if [[ ! -d "${ROOT_DIR}/.venv" ]]; then
-  info "Creating Python virtual environment..."
-  "${SYSTEM_PYTHON}" -m venv "${ROOT_DIR}/.venv"
-fi
-
-VENV_PYTHON="$(detect_python)"
-if [[ -z "${VENV_PYTHON}" ]]; then
-  fail "Could not find Python executable inside .venv."
-fi
-
-info "Installing FastAPI dependencies..."
-"${VENV_PYTHON}" -m pip install --upgrade pip >/dev/null
-"${VENV_PYTHON}" -m pip install -r ml/requirements.txt
-
-info "Launching FastAPI dev server..."
-"${VENV_PYTHON}" -m uvicorn ml.main:app --reload --host 0.0.0.0 --port 8000 &
-ML_PID=$!
-
 info "Launching Next.js dev server..."
 pnpm exec next dev --turbopack --hostname 0.0.0.0 --port 3000 &
 WEB_PID=$!
 
-info "Both services running. Press Ctrl+C to stop."
-wait -n "${ML_PID}" "${WEB_PID}"
+info "Dev environment running. Press Ctrl+C to stop."
+wait "${WEB_PID}"

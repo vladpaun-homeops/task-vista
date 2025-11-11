@@ -1,19 +1,29 @@
+import type { Metadata } from "next";
 import { addDays } from "date-fns";
 
 import { DashboardClient } from "@/components/dashboard/dashboard-client";
 import { prisma } from "@/server/db";
 import { Status } from "@/generated/prisma/enums";
+import { getSessionId } from "@/server/session";
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+  description: "TaskVista overview of overdue work, backlog, and quick stats.",
+};
 
 export default async function DashboardPage() {
+  const sessionId = await getSessionId();
   const now = new Date();
   const soonThreshold = addDays(now, 7);
 
   const [tasks, tags] = await Promise.all([
     prisma.task.findMany({
+      where: { sessionId },
       include: { tags: true },
       orderBy: [{ updatedAt: "desc" }],
     }),
     prisma.tag.findMany({
+      where: { sessionId },
       orderBy: { name: "asc" },
     }),
   ]);

@@ -165,7 +165,7 @@ export function CalendarBoard({ tasks }: CalendarBoardProps) {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Calendar</h1>
           <p className="text-sm text-muted-foreground">
-            Drag tasks between days to reschedule. Drop into "Unscheduled" to clear a date.
+            Drag tasks between days to reschedule. Drop into &quot;Unscheduled&quot; to clear a date.
           </p>
         </div>
         <div className="flex items-center gap-2">

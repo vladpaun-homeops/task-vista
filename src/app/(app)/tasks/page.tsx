@@ -1,18 +1,25 @@
+import type { Metadata } from "next";
 import { addDays } from "date-fns";
 
 import { Prisma } from "@/generated/prisma/client";
 import { Status } from "@/generated/prisma/enums";
-import type { Status as StatusType } from "@/generated/prisma/enums";
 
 import { TasksClient } from "@/components/tasks/tasks-client";
 import { prisma } from "@/server/db";
 import { taskFiltersSchema } from "@/lib/validations/task";
+import { getSessionId } from "@/server/session";
+
+export const metadata: Metadata = {
+  title: "Tasks",
+  description: "Manage TaskVista tasks, filters, and bulk actions.",
+};
 
 type TasksPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export default async function TasksPage({ searchParams }: TasksPageProps) {
+  const sessionId = await getSessionId();
   const resolvedSearchParams = searchParams ? await searchParams : {};
 
   const rawStatus =
@@ -72,6 +79,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
   }
 
   const where: Prisma.TaskWhereInput = {
+    sessionId,
     ...(statusFilter && { status: statusFilter }),
     ...(tagFilter && { tags: { some: { id: tagFilter } } }),
     ...(queryFilter && {
@@ -94,6 +102,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
       orderBy,
     }),
     prisma.tag.findMany({
+      where: { sessionId },
       include: { _count: { select: { tasks: true } } },
       orderBy: [{ tasks: { _count: "desc" } }, { name: "asc" }],
     }) as Promise<

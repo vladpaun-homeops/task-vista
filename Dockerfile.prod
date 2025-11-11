@@ -1,0 +1,55 @@
+# syntax=docker/dockerfile:1.7
+
+##
+## Dependencies layer: install all deps (dev + prod)
+##
+FROM node:20-alpine AS deps
+WORKDIR /app
+
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+
+RUN corepack enable
+
+COPY package.json pnpm-lock.yaml ./
+COPY prisma ./prisma
+RUN pnpm install --frozen-lockfile
+
+##
+## Builder layer: run prisma + next build (standalone)
+##
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+
+RUN corepack enable
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+ARG DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder?schema=public"
+ENV DATABASE_URL=${DATABASE_URL}
+
+RUN pnpm prisma generate
+RUN pnpm run build
+RUN pnpm prune --prod --ignore-scripts
+
+##
+## Runtime layer: minimal files for production
+##    
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Copy the standalone server, static assets, and public folder
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./public/_next/static
+COPY --from=builder /app/public ./public
+
+EXPOSE 3000
+
+CMD ["node", "server.js"]
