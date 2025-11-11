@@ -13,3 +13,6 @@ db-down:
 
 prisma:
 	pnpm run prepare
+
+db-wipe:
+	docker compose -f $(COMPOSE_FILE) exec -T db psql -U postgres -d appdb -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"

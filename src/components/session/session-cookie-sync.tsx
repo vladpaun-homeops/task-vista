@@ -1,4 +1,4 @@
- "use client";
+"use client";
 
 import { useEffect } from "react";
 
@@ -21,11 +21,9 @@ export function SessionCookieSync({ sessionId }: SessionCookieSyncProps) {
       .split("; ")
       .some((entry) => entry.startsWith(`${SESSION_COOKIE_NAME}=${sessionId}`));
 
-    if (hasCookie) {
-      return;
+    if (!hasCookie) {
+      document.cookie = `${SESSION_COOKIE_NAME}=${sessionId}; Path=/; Max-Age=${SESSION_COOKIE_MAX_AGE}; SameSite=Lax`;
     }
-
-    document.cookie = `${SESSION_COOKIE_NAME}=${sessionId}; Path=/; Max-Age=${SESSION_COOKIE_MAX_AGE}; SameSite=Lax`;
   }, [sessionId]);
 
   return null;
