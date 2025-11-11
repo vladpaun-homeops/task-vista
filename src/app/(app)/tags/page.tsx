@@ -1,6 +1,13 @@
+import type { Metadata } from "next";
+
 import { TagsClient } from "@/components/tags/tags-client";
 import { prisma } from "@/server/db";
 import { getSessionId } from "@/server/session";
+
+export const metadata: Metadata = {
+  title: "Tags",
+  description: "Curate TaskVista tags, colors, and usage counts.",
+};
 
 export default async function TagsPage() {
   const sessionId = await getSessionId();

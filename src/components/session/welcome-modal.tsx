@@ -81,7 +81,7 @@ export function WelcomeModal({ sessionId }: WelcomeModalProps) {
         <DialogHeader className="space-y-2 text-left">
           <DialogTitle className="flex items-center gap-2 text-2xl">
             <Sparkles className="h-5 w-5 text-primary" />
-            Welcome to Todo AI
+            Welcome to TaskVista
           </DialogTitle>
           <DialogDescription className="text-base text-foreground/80">
             Part of my portfolio server stack – a Next.js playground for tasks, tags, calendars, and dashboards.

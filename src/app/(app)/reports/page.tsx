@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { Metadata, ReactNode } from "react";
 
 import { addDays, differenceInCalendarDays, format } from "date-fns";
 
@@ -9,6 +9,11 @@ import { TaskPriorityBadge } from "@/components/tasks/task-priority-badge";
 import type { Priority, Status } from "@/generated/prisma/enums";
 import { prisma } from "@/server/db";
 import { getSessionId } from "@/server/session";
+
+export const metadata: Metadata = {
+  title: "Reports",
+  description: "See TaskVista completion stats, priorities, and tag usage trends.",
+};
 
 export default async function ReportsPage() {
   const sessionId = await getSessionId();

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +13,11 @@ type TaskDetailPageProps = {
   params: {
     taskId: string;
   };
+};
+
+export const metadata: Metadata = {
+  title: "Task details",
+  description: "Inspect and edit a single TaskVista task.",
 };
 
 export default async function TaskDetailPage({ params }: TaskDetailPageProps) {

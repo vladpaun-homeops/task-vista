@@ -1,6 +1,13 @@
+import type { Metadata } from "next";
+
 import { CalendarBoard, type CalendarBoardTask } from "@/components/tasks/calendar-board";
 import { prisma } from "@/server/db";
 import { getSessionId } from "@/server/session";
+
+export const metadata: Metadata = {
+  title: "Calendar",
+  description: "Drag-and-drop your tasks across the TaskVista calendar view.",
+};
 
 export default async function CalendarPage() {
   const sessionId = await getSessionId();

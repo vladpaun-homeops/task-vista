@@ -1,4 +1,11 @@
+import type { Metadata } from "next";
+
 import { SettingsContent } from "@/components/settings/settings-content";
+
+export const metadata: Metadata = {
+  title: "Settings",
+  description: "Tweak TaskVista preferences, themes, and upcoming notifications.",
+};
 
 export default function SettingsPage() {
   return (

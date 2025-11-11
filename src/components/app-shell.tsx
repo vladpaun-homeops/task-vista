@@ -59,7 +59,7 @@ export function AppShell({ children }: AppShellProps) {
         <SidebarHeader className="px-4 py-5">
           <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold">
             <Sparkles className="h-5 w-5 text-primary" />
-            <span className="group-data-[collapsible=icon]:hidden">Todo AI</span>
+            <span className="group-data-[collapsible=icon]:hidden">TaskVista</span>
           </Link>
         </SidebarHeader>
         <SidebarContent>

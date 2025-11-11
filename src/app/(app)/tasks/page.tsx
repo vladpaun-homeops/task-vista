@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { addDays } from "date-fns";
 
 import { Prisma } from "@/generated/prisma/client";
@@ -7,6 +8,11 @@ import { TasksClient } from "@/components/tasks/tasks-client";
 import { prisma } from "@/server/db";
 import { taskFiltersSchema } from "@/lib/validations/task";
 import { getSessionId } from "@/server/session";
+
+export const metadata: Metadata = {
+  title: "Tasks",
+  description: "Manage TaskVista tasks, filters, and bulk actions.",
+};
 
 type TasksPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
